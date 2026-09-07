@@ -1,0 +1,113 @@
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+# 注：标准 Python 模板里的 lib/ var/ 已刻意移除——它们是 setuptools 打包遗留，
+# 本项目不使用，保留反而可能误伤同名目录。
+lib64/
+parts/
+sdist/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# 单元测试 / 覆盖率
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+htmlcov/
+
+# 类型检查 / Lint / 格式化缓存
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+.ruff_cache/
+
+# ---------- 环境与工具 ----------
+.venv/
+venv/
+ENV/
+env/
+.envrc
+.env
+.env.*
+!.env.example
+.python-version
+.pdm-python
+.poetry-version
+# 注意：uv.lock / poetry.lock 建议**提交**而非忽略——应用类项目依赖它保证
+# 依赖可复现（库类项目则相反）。当前用 requirements.txt，故此处不列 lock。
+# 若后续引入 pyproject.toml + uv.lock，请把 lock 从忽略列表移除。
+
+# ---------- 编辑器 / IDE ----------
+.idea/
+.vscode/
+!.vscode/settings.json.example
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+
+# ---------- 操作系统 ----------
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ---------- 项目产物 ----------
+# 中间产物：逐句音频、字幕帧、视频片段
+work/
+# 成片输出
+output/
+
+# ---------- 内部文档（不随开源发布） ----------
+# 内部移交文档：含本地绝对路径与内部讨论记录。
+# 其中有价值的踩坑记录已迁移至 README 的「故障排查」章节。
+handoff.md
+
+# 临时文件
+*.log
+*.tmp
+tmp/
+temp/
+
+# ---------- 私有素材（可选） ----------
+# 若需要把个人卡片图/文案放在仓库内又不希望提交，
+# 统一放到 assets/private/ 下即可被忽略：
+assets/private/
+
+# 注意：assets/ 下的示例素材（swim_card1/2.png、script.txt）是 demo 必需的，
+# 故意纳入版本控制，请勿忽略整个 assets/ 目录。
+
+# ---------- 密钥与本地配置 ----------
+*.pem
+*.key
+*.p12
+config.local.yaml
+configs/*.local.yaml

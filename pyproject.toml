@@ -1,0 +1,53 @@
+[project]
+name = "vidforge"
+version = "0.1.0"
+description = "模板化口播视频生成引擎：固定卡片图 + 固定格式文案 → 自动合成口播视频"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+
+# TODO(发布前填写)：替换为你的真实署名
+authors = [{ name = "Gray", email = "long1795@gmail.com" }]
+
+keywords = ["video", "tts", "subtitle", "ffmpeg", "content-generation"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Video",
+]
+
+dependencies = [
+    "edge-tts>=7.2.8",
+    "PyYAML>=6.0",
+    "Pillow>=10.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/zzjhacn/vidforge"
+Repository = "https://github.com/zzjhacn/vidforge"
+Issues = "https://github.com/zzjhacn/vidforge/issues"
+
+[project.scripts]
+vidforge = "vidforge.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["vidforge"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "vidforge/",
+    "configs/",
+    "assets/",
+    "README.md",
+    "requirements.txt",
+]

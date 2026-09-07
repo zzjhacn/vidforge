@@ -1,0 +1,72 @@
+# 游泳数据口播视频 · 场景配置
+# 图片与文案为上游项目（LLM 解析运动 App 长截图）的产物；
+# 本配置只描述「如何把它们合成为视频」。
+
+name: swim
+
+canvas:
+  width: 1080
+  height: 1920
+  fps: 30
+
+tts:
+  voice: zh-CN-YunxiNeural      # 云希，年轻男声
+  rate: "+10%"
+  silence_between_ms: 200       # 句间静音
+  tail_padding_ms: 400          # 每组尾部留白
+
+timeline:
+  min_group_duration: 5.5       # 单张图最短停留，防止短句闪切
+
+script:
+  source: assets/script.txt
+  max_sentence_chars: 26        # 超过则按逗号二次切分
+  split_markers:
+    - "数据复盘来了"            # 开场白与数据部分的语义锚点
+
+# 绑定策略：开场白 + 标记句（总距离/泳姿/总时长）→ 记录卡片（数字对照）；
+# 配速、消耗、心率等分析数据 → 分析卡片（柱状图/曲线是话题的视觉延伸）
+assets:
+  - name: record
+    file: assets/swim_card1.png
+    fit: cover                  # 1080x1920 正好满屏
+    motion: { type: kenburns, from: 1.0, to: 1.06 }
+
+  - name: analysis
+    file: assets/swim_card2.png
+    fit: contain                # 长图完整显示，零信息损失
+    background: blur
+    background_blur: 24         # 模糊放大背景填充左右边
+    motion: { type: static }    # 前景静止，保证信息可读
+    background_motion: { type: kenburns, from: 1.0, to: 1.08 }
+
+bind:
+  - { asset: record,   range: "through:0" }   # 到「数据复盘来了」句为止（含）
+  - { asset: analysis, range: "after:0" }     # 其后所有句子
+
+subtitle:
+  enabled: true
+  # font 留空 = 自动探测系统中文字体（macOS / Linux / Windows）。
+  # 想固定字体再写绝对路径，例如：
+  #   font: "/System/Library/Fonts/Hiragino Sans GB.ttc"   # macOS
+  #   font: "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"  # Linux
+  # 路径不存在时会自动回退到探测结果，不会直接报错。
+  font_index: 0
+  size: 58
+  color: "#FFFFFF"
+  stroke_width: 5
+  stroke_color: "#000000"
+  bottom_margin: 240            # 避开卡片数据区，落在下方空白带
+  max_chars_per_line: 15
+  box: true
+  box_color: "#000000"
+  box_alpha: 96
+  box_padding: 26
+
+output:
+  file: output/swim.mp4
+  video_codec: libx264
+  preset: medium
+  crf: 20
+  audio_codec: aac
+  audio_bitrate: 192k
