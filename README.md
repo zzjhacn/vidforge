@@ -29,7 +29,7 @@ vidforge 把这件事变成一条命令。你只需要提供：
 - **锚点绑定** —— 用文案里的锚点句把内容绑到不同卡片，开场白写长写短都不影响后面的对位
 - **长图友好** —— 超出画布的长图自动 `contain` 完整显示，模糊背景填充两侧，零信息损失
 - **字幕自己画** —— 不依赖 ffmpeg 的 `drawtext`/`subtitles` 滤镜（很多发行版没编译），用 Pillow 渲染，中文断行和描边完全可控
-- **零 LLM、零云端依赖** —— 全流程本地跑（配音走 Edge TTS，见下方说明）
+- **TTS 方案可切换** —— 默认 Edge TTS（免费，非官方接口，本地即可跑）；也可切到 OpenAI 兼容端点 / 阿里云百炼等云端方案，纯配置按名字切换，内核零改动（见 `configs/swim.yaml` 注释示例）
 - **命令行 + 可视化双入口** —— 习惯终端就用命令行，不想记参数就开 Web 操作页面（**零第三方 Web 框架**，纯标准库实现）
 
 ---
@@ -179,10 +179,14 @@ canvas:
   fps: 30
 
 tts:
+  scheme: edge               # TTS 方案名：edge（默认）| openai | bailian
   voice: zh-CN-YunxiNeural    # 云希，年轻男声
-  rate: "+10%"                # 语速
+  rate: "+10%"                # 语速（edge / openai 支持；bailian 忽略）
   silence_between_ms: 200     # 句间静音
   tail_padding_ms: 400        # 每组尾部留白
+  # openai: { endpoint: "http://host/v1/audio/speech", key: "", model: "local", format: wav, concurrency: 4 }
+  # bailian: { endpoint: "https://{ws}.cn-beijing.maas.aliyuncs.com/api/v1/services/audio/tts/SpeechSynthesizer", key: "<KEY>", model: "qwen-audio-3.0-tts-flash", sample_rate: 24000 }
+  # 不同方案有各自独立的音色列表，Web 操作台会「先选方案、再选音色」
 
 timeline:
   min_group_duration: 5.5     # 单张图最短停留（秒），防短句闪切
@@ -414,7 +418,7 @@ vidforge -c configs/swim.yaml > /tmp/run.log 2>&1; echo "exit=$?"
 按优先级排列，欢迎 PR：
 
 - [x] 编程接口 `build()`，返回结构化时间轴（已完成：`pipeline.build`，命令行与 Web 共用）
-- [ ] TTS 供应商抽象层，支持切换云端服务
+- [x] TTS 供应商抽象层：按名字注册的 scheme（edge / openai / bailian），纯配置切换，见 `configs/swim.yaml` 注释示例与 `vidforge/tts.py` 的 `REGISTRY`
 - [ ] 历史数据存储 + 对比洞察（需接入 LLM，与断言校验配套）
 - [ ] 数据自洽性校验（如「平均配速 × 距离 ≈ 总时长」，防上游数字抄错）
 - [ ] 增量渲染，复用未变动的片段

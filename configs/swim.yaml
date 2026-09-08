@@ -10,10 +10,29 @@ canvas:
   fps: 30
 
 tts:
+  scheme: edge                  # TTS 方案名：edge（默认）| openai | bailian
   voice: zh-CN-YunxiNeural      # 云希，年轻男声
   rate: "+10%"
   silence_between_ms: 200       # 句间静音
   tail_padding_ms: 400          # 每组尾部留白
+  # ── 切换为 OpenAI 兼容端点（可选）─────────────────────────
+  # openai:
+  #   endpoint: "http://127.0.0.1:5000/v1/audio/speech"
+  #   key: ""                       # 本地服务留空
+  #   model: "local"                # 占位，多数本地后端忽略
+  #   format: wav
+  #   concurrency: 4
+  #   timeout: 30
+  #   no_verify: false              # 本机缺 CA 证书时临时置 true
+  # ── 切换为阿里云百炼（qwen-audio TTS，可选）───────────────
+  # bailian:
+  #   endpoint: "https://{WorkspaceId}.cn-beijing.maas.aliyuncs.com/api/v1/services/audio/tts/SpeechSynthesizer"
+  #   key: "<DASHSCOPE_API_KEY>"    # Bearer token
+  #   model: "qwen-audio-3.0-tts-flash"
+  #   sample_rate: 24000
+  #   format: wav
+  #   timeout: 30
+  #   no_verify: false              # 本机缺 CA 证书时临时置 true
 
 timeline:
   min_group_duration: 5.5       # 单张图最短停留，防止短句闪切

@@ -21,19 +21,9 @@ from typing import Any
 from urllib.parse import unquote, urlparse
 
 from ..pipeline import BuildError, build
+from ..tts import list_schemes
 
 STATIC_DIR = Path(__file__).parent / "static"
-
-# 常见中文音色（离线静态列表，避免启动时联网拉取）
-VOICES = [
-    ("zh-CN-YunxiNeural", "云希 · 年轻男声"),
-    ("zh-CN-YunjianNeural", "云健 · 男声解说"),
-    ("zh-CN-YunyangNeural", "云扬 · 男声新闻"),
-    ("zh-CN-YunxiaNeural", "云晓 · 男声少年"),
-    ("zh-CN-XiaoxiaoNeural", "晓晓 · 女声温柔"),
-    ("zh-CN-XiaoyiNeural", "晓伊 · 女声活泼"),
-    ("zh-CN-XiaoshuangNeural", "晓双 · 女声少年"),
-]
 
 CANVAS_PRESETS = {
     "1080x1920": (1080, 1920),
@@ -131,6 +121,10 @@ def _make_bind(n_images: int, n_markers: int) -> list[dict[str, str]]:
 
 def _build_yaml(cfg: dict[str, Any], assets: list[str], markers: list[str]) -> str:
     w, h = CANVAS_PRESETS.get(cfg.get("canvas", "1080x1920"), (1080, 1920))
+    scheme = (cfg.get("scheme") or "edge").strip()
+    # 从方案注册表取元信息，按 needs_endpoint / supports_rate 决定写哪些字段
+    meta = {s["name"]: s for s in list_schemes()}.get(scheme, {})
+    supports_rate = bool(meta.get("supports_rate", True))
     lines = [
         "name: web",
         "",
@@ -140,10 +134,31 @@ def _build_yaml(cfg: dict[str, Any], assets: list[str], markers: list[str]) -> s
         "  fps: 30",
         "",
         "tts:",
+        f"  scheme: {scheme}",
         f"  voice: {cfg.get('voice', 'zh-CN-YunxiNeural')}",
-        f"  rate: \"{cfg.get('rate', '+10%')}\"",
+    ]
+    if supports_rate and scheme != "bailian":
+        lines.append(f"  rate: \"{cfg.get('rate', '+10%')}\"")
+    lines += [
         "  silence_between_ms: 200",
         "  tail_padding_ms: 400",
+    ]
+    # 选中需要端点的方案且用户填写了 endpoint 时，写出对应子块
+    endpoint = (cfg.get("endpoint") or "").strip()
+    if endpoint and scheme in ("openai", "bailian"):
+        lines.append(f"  {scheme}:")
+        lines.append(f'    endpoint: "{endpoint}"')
+        key = (cfg.get("key") or "").strip()
+        if key:
+            lines.append(f'    key: "{key}"')
+        model = (cfg.get("model") or "").strip()
+        if model:
+            lines.append(f'    model: "{model}"')
+        if scheme == "bailian":
+            sr = (cfg.get("sample_rate") or "24000").strip()
+            lines.append(f"    sample_rate: {sr}")
+        # no_verify 默认不写（安全默认）；本机缺 CA 证书时在 YAML 手工置 true
+    lines += [
         "",
         "timeline:",
         "  min_group_duration: 5.5",
@@ -281,7 +296,8 @@ class Handler(BaseHTTPRequestHandler):
             self._file(STATIC_DIR / "index.html", "text/html; charset=utf-8")
         elif path == "/api/meta":
             self._json({
-                "voices": [{"id": v, "label": t} for v, t in VOICES],
+                # 各 TTS 方案及其音色列表（Web 据此做「先选方案、再选音色」）
+                "schemes": list_schemes(),
                 "canvas": list(CANVAS_PRESETS.keys()),
             })
         elif path.startswith("/api/task/"):

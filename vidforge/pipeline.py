@@ -84,10 +84,12 @@ def build(
 
     # ── 2. 语音合成（逐句，时长实测）─────────────────────────
     t = profile.tts
-    emit(f"\n语音合成：{t['voice']} rate={t['rate']} …", 10)
+    scheme = t.get("scheme") or t.get("provider") or "edge"
+    emit(f"\n语音合成：scheme={scheme} voice={t.get('voice')} …", 10)
+    # 整块 tts 配置传入，由 tts.synthesize 按 scheme 分发到对应方案实现
     synthesized = tts.synthesize(
         list(sentences),
-        voice=t["voice"], rate=t["rate"], volume=t["volume"],
+        t,
         workdir=workdir / "tts",
     )
     by_index = {i: (p, d) for i, (p, d) in enumerate(synthesized)}

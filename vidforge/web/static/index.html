@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<html lang="zh-CN" data-page-node-id="HeV8mO34Lk1tt9ygJvY654">
+<head data-page-node-id="qBAJkK0pOgNBuISqBvnobI">
+<meta charset="utf-8" data-page-node-id="xWh8LoFOIUkrG7IiJlWNsB">
+<meta name="viewport" content="width=device-width, initial-scale=1" data-page-node-id="QQ08ZdghjIqF6HVxzJSM0X">
 <title>vidforge · 操作台</title>
 <style>
   :root{
@@ -64,85 +64,93 @@
         color:var(--cyan);margin-left:8px}
 </style>
 </head>
-<body>
-<div class="wrap">
-  <header>
-    <h1><b>vidforge</b> 操作台</h1>
-    <span class="tag">固定卡片 + 固定文案 → 口播视频</span>
-    <span class="tag" id="meta">加载中…</span>
+<body data-page-node-id="WgYzE9ztJzBN3B6lzRFJM9">
+<div class="wrap" data-page-node-id="9G7h3kIWFJy7rQIq51XIb6">
+  <header data-page-node-id="THAlAF25lA5qHukHzBBZAa">
+    <h1 data-page-node-id="dKcZ8JObVEbhVjhb8R9C6G"><b data-page-node-id="eO29GFLK8kGbGlz6b0FOeK">vidforge</b> 操作台</h1>
+    <span class="tag" data-page-node-id="f6Jxujiv1NUjkkLJxqXzIt">固定卡片 + 固定文案 → 口播视频</span>
+    <span class="tag" id="meta" data-page-node-id="DW8XetGR4fkTyVs4xzbQjQ">加载中…</span>
   </header>
 
-  <div class="grid">
+  <div class="grid" data-page-node-id="zBAIofgtLgAvLf5gjCMsXb">
     <!-- 左：素材与文案 -->
-    <div>
-      <div class="card">
-        <h2>① 卡片图（按顺序）</h2>
-        <div class="drop" id="drop">
-          <strong>点击选择 或 拖拽图片到这里</strong>
-          <p>支持多张，上传顺序即播放顺序</p>
+    <div data-page-node-id="CoY6nLEkhq2hF6qfGV3I7r">
+      <div class="card" data-page-node-id="LGqDotKZZ9bT9NWtDb8ePL">
+        <h2 data-page-node-id="XRxDltiLUxrG6617KG9WDC">① 卡片图（按顺序）</h2>
+        <div class="drop" id="drop" data-page-node-id="k0jC7arFyZTPHBVYfuIu34">
+          <strong data-page-node-id="ldGEl4EdSZEJFD3AIw3Zq8">点击选择 或 拖拽图片到这里</strong>
+          <p data-page-node-id="DXi238Cu8IiSRL5NyRRemr">支持多张，上传顺序即播放顺序</p>
         </div>
-        <input type="file" id="file" accept="image/*" multiple hidden>
-        <div class="thumbs" id="thumbs"></div>
+        <input type="file" id="file" accept="image/*" multiple hidden data-page-node-id="YBW6M562ElwOBnWyqPOGgh">
+        <div class="thumbs" id="thumbs" data-page-node-id="tD2R1UtlthZixD9poeILbr"></div>
       </div>
 
-      <div class="card" style="margin-top:20px">
-        <h2>② 口播文案</h2>
+      <div class="card" style="margin-top:20px" data-page-node-id="T6uoid4haY3BYsrD0RDvRn">
+        <h2 data-page-node-id="osn8O94GHdj8PnkyAnjKCU">② 口播文案</h2>
         <textarea id="script" placeholder="例：今日游泳1500米，留了点时间练习自由泳。数据复盘来了：蛙泳1500米，总时长35分36秒。平均配速2分22秒每100米……"></textarea>
-        <p class="hint">⚠️ 为朗读而写：<code>2′22″</code> 写成「2分22秒」、<code>625kcal</code> 写成「625千卡」</p>
+        <p class="hint" data-page-node-id="TgHRzVee2CKkJFSOckGrMw">⚠️ 为朗读而写：<code data-page-node-id="LNCOlECaWz4C3XO5lfhh8D">2′22″</code> 写成「2分22秒」、<code data-page-node-id="5kqQA5JHFWxd8P85BBoX7J">625kcal</code> 写成「625千卡」</p>
       </div>
     </div>
 
     <!-- 右：配置 -->
-    <div>
-      <div class="card">
-        <h2>③ 生成配置</h2>
-        <div class="row"><label>音色</label><select id="voice"></select></div>
-        <div class="row"><label>语速</label>
-          <input type="range" id="rate_r" min="-20" max="40" step="5" value="10">
-          <input type="text" id="rate" value="+10%" style="flex:0 0 82px;text-align:center">
+    <div data-page-node-id="vwYSjTQEkDy9NwIl0AwSpk">
+      <div class="card" data-page-node-id="9MpewHGFzO2EXNxErFJhJc">
+        <h2 data-page-node-id="CT32EKq8fEa3UJCE1CJIs1">③ 生成配置</h2>
+        <div class="row" data-page-node-id="TvgDBFHBH0DjDJ9B8y40ET"><label data-page-node-id="MyyMDAica83GWCnqUCCk19">TTS 方案</label><select id="scheme" data-page-node-id="78oBRcmVyaanTGw6GWDFEF"></select></div>
+        <div class="row" data-page-node-id="qMsogi6K2k930OtNcaIuGX"><label data-page-node-id="HnmCXYNWToYtmZxcqx9ytH">音色</label><select id="voice" data-page-node-id="yloACH7MlnXGsRBxn1vYtM"></select></div>
+        <div class="row" id="rate_row" data-page-node-id="5p6t50KK2TDOs4QHNE8BTA"><label data-page-node-id="yQjHp1heXNDeW7zTH1EFt7">语速</label>
+          <input type="range" id="rate_r" min="-20" max="40" step="5" value="10" data-page-node-id="6hGJ9A3EcGPGiDSUq8Xy8p">
+          <input type="text" id="rate" value="+10%" style="flex:0 0 82px;text-align:center" data-page-node-id="i1rfGTYbjlS8ZG44BbQmjV">
         </div>
-        <div class="row"><label>画布</label><select id="canvas"></select></div>
-        <div class="row"><label>图片适配</label>
-          <select id="fit">
-            <option value="contain">contain · 完整显示（推荐，长图不裁切）</option>
-            <option value="cover">cover · 满屏裁切填充</option>
+        <div id="ep_block" style="display:none" data-page-node-id="Sfw6GDiWNFXRgsmLgtM91z">
+          <div class="row" data-page-node-id="19bXMsgxeAHCKHxK1TehRC"><label data-page-node-id="L5NT0ljIGpL9HoOMxUVOFA">端点 URL</label><input type="text" id="ep_url" placeholder="https://..." data-page-node-id="Kfs37G7VsKrrBbVw4IYqaM"></div>
+          <div class="row" data-page-node-id="CUJAvO5aSpEgQ3e3S3qNSn"><label data-page-node-id="ziT2vxy9FrYHd55sgBUWQ0">API Key</label><input type="text" id="ep_key" placeholder="（本地服务可留空）" data-page-node-id="BCBexrJ1ulIDomNpFwhVXN"></div>
+          <div class="row" data-page-node-id="QNhwi4o8XrZkMlL9Q3t6se"><label data-page-node-id="CO6MZ5G1rmJxyVOG1bNeiA">模型名</label><input type="text" id="ep_model" placeholder="model" data-page-node-id="DCetXgaxaGQ1K5ZrKaA2UX"></div>
+          <div class="row" id="sr_row" style="display:none" data-page-node-id="Ah6yGFkj9wW2vOdpzGR8or"><label data-page-node-id="1cJ9m8nqmLhJlJMCxssGMY">采样率</label><input type="text" id="ep_sr" value="24000" data-page-node-id="NpXnybLnanO42L6MDdqN78"></div>
+          <p class="hint" id="ep_hint" data-page-node-id="yGS5xqXvODBzU2orpcQpl4"></p>
+        </div>
+        <div class="row" data-page-node-id="ielBRQn5Qv3ScyU27r9TrH"><label data-page-node-id="PkkZDLtUaWeVQnwJKlAaLL">画布</label><select id="canvas" data-page-node-id="aPURvVfg6Sa7BmqapvFiV3"></select></div>
+        <div class="row" data-page-node-id="4pJqSAcGRPAOIfEUiCrkJP"><label data-page-node-id="ZyFkWyRqUfmZ80apHoWoxR">图片适配</label>
+          <select id="fit" data-page-node-id="goZhE0TCsfqIoqk7ZlDu8f">
+            <option value="contain" data-page-node-id="NEMkFADEA64yzeqvs1cfdx">contain · 完整显示（推荐，长图不裁切）</option>
+            <option value="cover" data-page-node-id="qNK0uoez2446nvKKaVmuQP">cover · 满屏裁切填充</option>
           </select>
         </div>
-        <div class="row"><label>锚点句</label>
-          <input type="text" id="markers" placeholder="数据复盘来了">
+        <div class="row" data-page-node-id="F1b0OIvLgG1fEkffr3kBGc"><label data-page-node-id="2lC0GdvTEjWjOlCmmccMoL">锚点句</label>
+          <input type="text" id="markers" placeholder="数据复盘来了" data-page-node-id="2sDH7zzb9Nz3MGCGk0hpUh">
         </div>
-        <p class="hint">N 张图需要 N-1 个锚点（多个用逗号分隔）。锚点前的内容归前一张图。</p>
+        <p class="hint" data-page-node-id="Aqh1xGbiKYuiBZHhjbDgyF">N 张图需要 N-1 个锚点（多个用逗号分隔）。锚点前的内容归前一张图。</p>
       </div>
 
-      <div class="card" style="margin-top:20px">
-        <h2>④ 字幕</h2>
-        <div class="row"><label>显示字幕</label>
-          <span class="check"><input type="checkbox" id="sub_on" checked> 开启</span>
+      <div class="card" style="margin-top:20px" data-page-node-id="1HUw3pC4MMmG4LRUr8J27s">
+        <h2 data-page-node-id="NedKRzq58CFP1AWf0KNVbr">④ 字幕</h2>
+        <div class="row" data-page-node-id="AKhL3YKsdhO5ibkHOddNwB"><label data-page-node-id="ks1JCSCWA70mO0Ci3BtYQj">显示字幕</label>
+          <span class="check" data-page-node-id="oLHAr25k2FHE8yV1OuCkye"><input type="checkbox" id="sub_on" checked data-page-node-id="YGQNgDtofrcZdrsRCj8TQY"> 开启</span>
         </div>
-        <div class="row"><label>字号</label><input type="number" id="sub_size" value="58"></div>
-        <div class="row"><label>距底边(px)</label><input type="number" id="sub_margin" value="260"></div>
-        <div class="row"><label>最大句长</label><input type="number" id="maxchars" value="26"></div>
+        <div class="row" data-page-node-id="1GSz5f6Xg8OamLiRww2QA8"><label data-page-node-id="CWjbECVuBsSbVss2BJH127">字号</label><input type="number" id="sub_size" value="58" data-page-node-id="BX7yLftuvPGi2ljIvblvAE"></div>
+        <div class="row" data-page-node-id="8cffWd8TAFbbIBL1d1Dh4E"><label data-page-node-id="GJsLEbgdtbPfDQ2nm6DorN">距底边(px)</label><input type="number" id="sub_margin" value="260" data-page-node-id="sRl772AivuvR0Sv4eeuQ4Z"></div>
+        <div class="row" data-page-node-id="yeYhw5ygQUL660Fd8j9Iu7"><label data-page-node-id="0JTosX9oyvFo7mcQRDdItu">最大句长</label><input type="number" id="maxchars" value="26" data-page-node-id="lqrmX0DCZRfAc0nRyFLTcV"></div>
       </div>
 
-      <div class="actions">
-        <button class="primary" id="go">开始生成</button>
-        <button id="demo">填入示例</button>
-        <span class="status" id="status">待命</span>
+      <div class="actions" data-page-node-id="uS4R8mUhnJoYD4Ch7MaGA3">
+        <button class="primary" id="go" data-page-node-id="G0Ro7ZCSRzN2zTqBonmKut">开始生成</button>
+        <button id="demo" data-page-node-id="86YAf0WPSAGyetJlkJXght">填入示例</button>
+        <span class="status" id="status" data-page-node-id="731JjZpAdDrHX9JLOtMo6A">待命</span>
       </div>
     </div>
   </div>
 
   <!-- 进度与结果 -->
-  <div class="card" style="margin-top:20px">
-    <h2>进度</h2>
-    <div class="bar"><i id="bar"></i></div>
-    <div class="status" id="msg">尚未开始</div>
-    <div class="logs" id="logs"></div>
-    <div class="out">
-      <video id="video" controls></video>
-      <div id="dlbox" style="display:none;margin-top:12px">
-        <button id="dl">⬇ 下载成片</button>
-        <span class="pill" id="info"></span>
+  <div class="card" style="margin-top:20px" data-page-node-id="8j7pp540d5fUDhcMGB0Ulj">
+    <h2 data-page-node-id="BQupxoHXfqwQJxJ18W4Zdo">进度</h2>
+    <div class="bar" data-page-node-id="lagBWz7XkoJH99mn41uHSH"><i id="bar" data-page-node-id="H8wKzuC1rtevavy66wECdr"></i></div>
+    <div class="status" id="msg" data-page-node-id="2JWh5CDjqjjABevfdzp2Kd">尚未开始</div>
+    <div class="logs" id="logs" data-page-node-id="Xxe28UcFPqgxUWkr0iCHGk"></div>
+    <div class="out" data-page-node-id="Kpbzm1CMySCmZRYIPlmH3C">
+      <video id="video" controls data-page-node-id="TpOuPSfhcNQRyoDmCh8PQe"></video>
+      <div id="dlbox" style="display:none;margin-top:12px" data-page-node-id="IRJhiIYkEoYBDTybvtWFEe">
+        <button id="dl" data-page-node-id="wURFMbhwHCEHJ8GyI5wQFj">⬇ 下载成片</button>
+        <span class="pill" id="info" data-page-node-id="9CvZEOHyUUDF2gS6eU3Tev"></span>
       </div>
     </div>
   </div>
@@ -152,26 +160,67 @@
 const $ = id => document.getElementById(id);
 let files = [], taskId = null, timer = null;
 
-// 初始化下拉：音色 / 画布
+// 初始化下拉：TTS 方案 / 音色 / 画布
 // 无后端（直接静态打开本文件）时用内置默认值兜底，保证 UI 完整可见
-const DEFAULT_VOICES = [
-  ['zh-CN-YunxiNeural','云希 · 年轻男声'], ['zh-CN-YunjianNeural','云健 · 男声解说'],
-  ['zh-CN-YunyangNeural','云扬 · 男声新闻'], ['zh-CN-YunxiaNeural','云晓 · 男声少年'],
-  ['zh-CN-XiaoxiaoNeural','晓晓 · 女声温柔'], ['zh-CN-XiaoyiNeural','晓伊 · 女声活泼'],
-  ['zh-CN-XiaoshuangNeural','晓双 · 女声少年']
+const DEFAULT_SCHEMES = [
+  {name:'edge', label:'Edge TTS（微软）', supports_rate:true, supports_volume:true, needs_endpoint:false,
+   voices:[{id:'zh-CN-YunxiNeural',label:'云希 · 年轻男声'},{id:'zh-CN-YunjianNeural',label:'云健 · 男声解说'},
+           {id:'zh-CN-YunyangNeural',label:'云扬 · 男声新闻'},{id:'zh-CN-YunxiaNeural',label:'云晓 · 男声少年'},
+           {id:'zh-CN-XiaoxiaoNeural',label:'晓晓 · 女声温柔'},{id:'zh-CN-XiaoyiNeural',label:'晓伊 · 女声活泼'},
+           {id:'zh-CN-XiaoshuangNeural',label:'晓双 · 女声少年'}]},
+  {name:'openai', label:'OpenAI 兼容端点', supports_rate:true, supports_volume:false, needs_endpoint:true,
+   voices:[{id:'alloy',label:'Alloy'},{id:'ash',label:'Ash'},{id:'coral',label:'Coral'},{id:'echo',label:'Echo'},
+           {id:'fable',label:'Fable'},{id:'onyx',label:'Onyx'},{id:'nova',label:'Nova'},{id:'sage',label:'Sage'},
+           {id:'shimmer',label:'Shimmer'}]},
+  {name:'bailian', label:'阿里云百炼', supports_rate:false, supports_volume:false, needs_endpoint:true,
+   voices:[{id:'longanhuan_v3.6',label:'龙安欢 v3.6'},{id:'longxiaochun_v3.6',label:'龙晓春 v3.6'},
+           {id:'longcheng_v3.6',label:'龙城 v3.6'},{id:'longxiaoxia_v3.6',label:'龙晓霞 v3.6'},
+           {id:'longwan_v3.6',label:'龙婉 v3.6'},{id:'longtu_v3.6',label:'龙图 v3.6'},
+           {id:'longhua_v3.6',label:'龙华 v3.6'},{id:'longshu_v3.6',label:'龙书 v3.6'}]},
 ];
 const DEFAULT_CANVAS = ['1080x1920','1920x1080','1080x1080'];
 let offline = false;
+let SCHEMES = DEFAULT_SCHEMES;
+
+// 音色列表归一化：后端 /api/meta 与内置兜底统一为 {id, label} 对象；
+// 同时兼容历史 [id, label] 元组写法，避免两侧结构漂移导致下拉渲染成 undefined。
+function normVoices(list){
+  return (list||[]).map(v => Array.isArray(v) ? {id:v[0], label:v[1]} : v)
+                   .filter(v => v && v.id !== undefined && v.id !== null);
+}
+
+// 选择方案后：重填音色下拉，并按方案能力显隐语速 / 端点字段
+function applyScheme(name){
+  const s = SCHEMES.find(x=>x.name===name) || SCHEMES[0];
+  const vs = normVoices(s.voices);
+  $('voice').innerHTML = vs.length
+    ? vs.map(v=>`<option value="${v.id}">${v.label}</option>`).join('')
+    : '<option value="">（该方案未提供音色列表，请手填）</option>';
+  $('rate_row').style.display = s.supports_rate ? '' : 'none';
+  $('ep_block').style.display = s.needs_endpoint ? '' : 'none';
+  if(s.name==='bailian'){
+    $('sr_row').style.display='';
+    $('ep_hint').textContent='百炼端点形如 https://{WorkspaceId}.cn-beijing.maas.aliyuncs.com/api/v1/services/audio/tts/SpeechSynthesizer';
+  } else if(s.name==='openai'){
+    $('sr_row').style.display='none';
+    $('ep_hint').textContent='OpenAI 兼容端点形如 http://host/v1/audio/speech';
+  }
+  $('ep_model').placeholder = s.name==='bailian' ? 'qwen-audio-3.0-tts-flash' : 'local';
+}
+$('scheme').onchange = e => applyScheme(e.target.value);
 
 fetch('/api/meta').then(r=>r.json()).then(m=>{
-  $('voice').innerHTML = m.voices.map(v=>`<option value="${v.id}">${v.label}</option>`).join('');
+  if(m.schemes && m.schemes.length) SCHEMES = m.schemes;
+  $('scheme').innerHTML = SCHEMES.map(s=>`<option value="${s.name}">${s.label}</option>`).join('');
   $('canvas').innerHTML = m.canvas.map(c=>`<option value="${c}">${c}</option>`).join('');
-  $('meta').textContent = 'edge-tts 配音 · 零第三方 Web 框架';
+  $('meta').textContent = '多方案 TTS · 零第三方 Web 框架';
+  applyScheme('edge');
 }).catch(()=>{
   offline = true;
-  $('voice').innerHTML = DEFAULT_VOICES.map(v=>`<option value="${v[0]}">${v[1]}</option>`).join('');
+  $('scheme').innerHTML = SCHEMES.map(s=>`<option value="${s.name}">${s.label}</option>`).join('');
   $('canvas').innerHTML = DEFAULT_CANVAS.map(c=>`<option value="${c}">${c}</option>`).join('');
   $('meta').textContent = '⚠ 未连接后端，仅供预览';
+  applyScheme('edge');
   $('go').onclick = () => alert('请先启动服务：vidforge-web\n然后访问 http://127.0.0.1:8765');
 });
 
@@ -215,8 +264,17 @@ $('go').onclick = async () => {
   const fd = new FormData();
   files.forEach(f => fd.append('images', f, f.name));
   fd.append('script', $('script').value.trim());
+  const scheme = $('scheme').value;
+  fd.append('scheme', scheme);
   fd.append('voice', $('voice').value);
-  fd.append('rate', $('rate').value);
+  const smeta = (SCHEMES.find(x=>x.name===scheme) || {});
+  if(smeta.supports_rate) fd.append('rate', $('rate').value);
+  if(smeta.needs_endpoint){
+    fd.append('endpoint', $('ep_url').value.trim());
+    fd.append('key', $('ep_key').value.trim());
+    fd.append('model', $('ep_model').value.trim());
+    if(scheme==='bailian') fd.append('sample_rate', $('ep_sr').value.trim());
+  }
   fd.append('canvas', $('canvas').value);
   fd.append('fit', $('fit').value);
   fd.append('markers', $('markers').value);

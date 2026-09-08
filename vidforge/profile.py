@@ -15,12 +15,33 @@ import yaml
 DEFAULTS: dict[str, Any] = {
     "canvas": {"width": 1080, "height": 1920, "fps": 30},
     "tts": {
-        "provider": "edge",
+        # scheme：TTS 方案名（按名字注册，见 vidforge/tts.py 的 REGISTRY）。
+        # 可选：edge（默认，微软 Edge TTS）| openai（OpenAI 兼容端点）| bailian（阿里云百炼）
+        "scheme": "edge",
         "voice": "zh-CN-YunxiNeural",
         "rate": "+10%",
         "volume": "+0%",
         "silence_between_ms": 200,
         "tail_padding_ms": 400,
+        # 各方案的专属参数（仅当选中该方案时读取；缺失则用下方默认值）
+        "openai": {
+            "endpoint": "",          # 必填，例如 http://127.0.0.1:5000/v1/audio/speech
+            "key": "",               # 本地服务通常留空
+            "model": "local",        # 占位，多数本地后端忽略
+            "format": "wav",
+            "concurrency": 4,        # 云端端点可并行
+            "timeout": 30,
+            "no_verify": False,      # 本机缺 CA 根证书时再临时置 true
+        },
+        "bailian": {
+            "endpoint": "",          # 必填，百炼完整路径
+            "key": "",               # Bearer token（DashScope API Key）
+            "model": "qwen-audio-3.0-tts-flash",
+            "sample_rate": 24000,
+            "format": "wav",
+            "timeout": 30,
+            "no_verify": False,      # 本机缺 CA 根证书时再临时置 true
+        },
     },
     "timeline": {"min_group_duration": 5.5},
     "subtitle": {
