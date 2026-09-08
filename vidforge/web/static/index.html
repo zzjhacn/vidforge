@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>vidforge · 操作台</title>
+<style>
+  :root{
+    --bg:#0b1220; --bg2:#101b2e; --card:#16243c; --line:#26374f;
+    --ink:#f1f5f9; --sub:#94a3b8; --cyan:#38bdf8; --amber:#f59e0b; --green:#34d399; --red:#f87171;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(180deg,var(--bg),var(--bg2));color:var(--ink);
+       font:15px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+       min-height:100vh}
+  .wrap{max-width:1180px;margin:0 auto;padding:32px 24px 64px}
+  header{display:flex;align-items:baseline;gap:14px;margin-bottom:26px;flex-wrap:wrap}
+  h1{margin:0;font-size:26px;letter-spacing:.5px}
+  h1 b{color:var(--cyan)}
+  .tag{font-size:12px;color:var(--sub);border:1px solid var(--line);border-radius:20px;padding:3px 12px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  @media(max-width:900px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px}
+  .card h2{margin:0 0 14px;font-size:15px;color:var(--cyan);font-weight:600;letter-spacing:.4px}
+  .drop{border:2px dashed var(--line);border-radius:12px;padding:26px;text-align:center;cursor:pointer;
+        transition:.15s;background:rgba(56,189,248,.03)}
+  .drop:hover,.drop.over{border-color:var(--cyan);background:rgba(56,189,248,.09)}
+  .drop p{margin:6px 0 0;color:var(--sub);font-size:13px}
+  .thumbs{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+  .thumb{position:relative;width:84px;height:112px;border-radius:9px;overflow:hidden;border:1px solid var(--line);
+         background:#0b1220}
+  .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+  .thumb .no{position:absolute;left:0;top:0;background:rgba(11,18,32,.82);color:var(--cyan);
+             font-size:11px;padding:1px 7px;border-bottom-right-radius:7px}
+  .thumb .del{position:absolute;right:2px;top:2px;background:rgba(0,0,0,.6);color:#fff;border:0;
+              border-radius:50%;width:20px;height:20px;cursor:pointer;line-height:1;font-size:13px}
+  textarea{width:100%;min-height:150px;background:#0b1220;color:var(--ink);border:1px solid var(--line);
+           border-radius:10px;padding:12px;font:14px/1.7 inherit;resize:vertical}
+  textarea:focus,input:focus,select:focus{outline:none;border-color:var(--cyan)}
+  .row{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+  .row label{width:112px;color:var(--sub);font-size:13px;flex:none}
+  input[type=text],input[type=number],select{background:#0b1220;color:var(--ink);border:1px solid var(--line);
+      border-radius:8px;padding:8px 10px;font:inherit;flex:1;min-width:0}
+  input[type=range]{flex:1;accent-color:var(--cyan)}
+  .hint{color:var(--sub);font-size:12px;margin:6px 0 0}
+  .check{display:flex;align-items:center;gap:8px}
+  .check input{width:auto;accent-color:var(--cyan)}
+  button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);
+         background:#1c2b45;color:var(--ink);padding:10px 18px;transition:.15s}
+  button:hover{border-color:var(--cyan);background:#22334f}
+  button.primary{background:var(--cyan);color:#06263a;border:0;font-weight:600;padding:13px 34px;font-size:16px}
+  button.primary:hover{background:#5cccf9}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .actions{display:flex;gap:12px;align-items:center;margin-top:22px;flex-wrap:wrap}
+  .bar{height:8px;background:#0b1220;border-radius:6px;overflow:hidden;margin:14px 0 8px;border:1px solid var(--line)}
+  .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--green));transition:width .4s}
+  .logs{background:#0b1220;border:1px solid var(--line);border-radius:10px;padding:12px;height:170px;overflow:auto;
+        font:12px/1.65 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--sub);white-space:pre-wrap;margin-top:12px}
+  .status{font-size:13px;color:var(--sub)}
+  .status.err{color:var(--red)} .status.ok{color:var(--green)}
+  video{width:100%;border-radius:12px;border:1px solid var(--line);background:#000;margin-top:14px;display:none}
+  .out{margin-top:18px}
+  .pill{display:inline-block;font-size:12px;padding:3px 10px;border-radius:20px;background:rgba(56,189,248,.14);
+        color:var(--cyan);margin-left:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><b>vidforge</b> 操作台</h1>
+    <span class="tag">固定卡片 + 固定文案 → 口播视频</span>
+    <span class="tag" id="meta">加载中…</span>
+  </header>
+
+  <div class="grid">
+    <!-- 左：素材与文案 -->
+    <div>
+      <div class="card">
+        <h2>① 卡片图（按顺序）</h2>
+        <div class="drop" id="drop">
+          <strong>点击选择 或 拖拽图片到这里</strong>
+          <p>支持多张，上传顺序即播放顺序</p>
+        </div>
+        <input type="file" id="file" accept="image/*" multiple hidden>
+        <div class="thumbs" id="thumbs"></div>
+      </div>
+
+      <div class="card" style="margin-top:20px">
+        <h2>② 口播文案</h2>
+        <textarea id="script" placeholder="例：今日游泳1500米，留了点时间练习自由泳。数据复盘来了：蛙泳1500米，总时长35分36秒。平均配速2分22秒每100米……"></textarea>
+        <p class="hint">⚠️ 为朗读而写：<code>2′22″</code> 写成「2分22秒」、<code>625kcal</code> 写成「625千卡」</p>
+      </div>
+    </div>
+
+    <!-- 右：配置 -->
+    <div>
+      <div class="card">
+        <h2>③ 生成配置</h2>
+        <div class="row"><label>音色</label><select id="voice"></select></div>
+        <div class="row"><label>语速</label>
+          <input type="range" id="rate_r" min="-20" max="40" step="5" value="10">
+          <input type="text" id="rate" value="+10%" style="flex:0 0 82px;text-align:center">
+        </div>
+        <div class="row"><label>画布</label><select id="canvas"></select></div>
+        <div class="row"><label>图片适配</label>
+          <select id="fit">
+            <option value="contain">contain · 完整显示（推荐，长图不裁切）</option>
+            <option value="cover">cover · 满屏裁切填充</option>
+          </select>
+        </div>
+        <div class="row"><label>锚点句</label>
+          <input type="text" id="markers" placeholder="数据复盘来了">
+        </div>
+        <p class="hint">N 张图需要 N-1 个锚点（多个用逗号分隔）。锚点前的内容归前一张图。</p>
+      </div>
+
+      <div class="card" style="margin-top:20px">
+        <h2>④ 字幕</h2>
+        <div class="row"><label>显示字幕</label>
+          <span class="check"><input type="checkbox" id="sub_on" checked> 开启</span>
+        </div>
+        <div class="row"><label>字号</label><input type="number" id="sub_size" value="58"></div>
+        <div class="row"><label>距底边(px)</label><input type="number" id="sub_margin" value="260"></div>
+        <div class="row"><label>最大句长</label><input type="number" id="maxchars" value="26"></div>
+      </div>
+
+      <div class="actions">
+        <button class="primary" id="go">开始生成</button>
+        <button id="demo">填入示例</button>
+        <span class="status" id="status">待命</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 进度与结果 -->
+  <div class="card" style="margin-top:20px">
+    <h2>进度</h2>
+    <div class="bar"><i id="bar"></i></div>
+    <div class="status" id="msg">尚未开始</div>
+    <div class="logs" id="logs"></div>
+    <div class="out">
+      <video id="video" controls></video>
+      <div id="dlbox" style="display:none;margin-top:12px">
+        <button id="dl">⬇ 下载成片</button>
+        <span class="pill" id="info"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let files = [], taskId = null, timer = null;
+
+// 初始化下拉：音色 / 画布
+// 无后端（直接静态打开本文件）时用内置默认值兜底，保证 UI 完整可见
+const DEFAULT_VOICES = [
+  ['zh-CN-YunxiNeural','云希 · 年轻男声'], ['zh-CN-YunjianNeural','云健 · 男声解说'],
+  ['zh-CN-YunyangNeural','云扬 · 男声新闻'], ['zh-CN-YunxiaNeural','云晓 · 男声少年'],
+  ['zh-CN-XiaoxiaoNeural','晓晓 · 女声温柔'], ['zh-CN-XiaoyiNeural','晓伊 · 女声活泼'],
+  ['zh-CN-XiaoshuangNeural','晓双 · 女声少年']
+];
+const DEFAULT_CANVAS = ['1080x1920','1920x1080','1080x1080'];
+let offline = false;
+
+fetch('/api/meta').then(r=>r.json()).then(m=>{
+  $('voice').innerHTML = m.voices.map(v=>`<option value="${v.id}">${v.label}</option>`).join('');
+  $('canvas').innerHTML = m.canvas.map(c=>`<option value="${c}">${c}</option>`).join('');
+  $('meta').textContent = 'edge-tts 配音 · 零第三方 Web 框架';
+}).catch(()=>{
+  offline = true;
+  $('voice').innerHTML = DEFAULT_VOICES.map(v=>`<option value="${v[0]}">${v[1]}</option>`).join('');
+  $('canvas').innerHTML = DEFAULT_CANVAS.map(c=>`<option value="${c}">${c}</option>`).join('');
+  $('meta').textContent = '⚠ 未连接后端，仅供预览';
+  $('go').onclick = () => alert('请先启动服务：vidforge-web\n然后访问 http://127.0.0.1:8765');
+});
+
+// 语速滑块联动
+$('rate_r').oninput = e => $('rate').value = (e.target.value>0?'+':'') + e.target.value + '%';
+
+// 上传：点击 + 拖拽
+const drop = $('drop');
+drop.onclick = () => $('file').click();
+$('file').onchange = e => addFiles([...e.target.files]);
+['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over')}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over')}));
+drop.addEventListener('drop', e => addFiles([...e.dataTransfer.files]));
+
+function addFiles(list){
+  files.push(...list.filter(f=>f.type.startsWith('image/')));
+  renderThumbs();
+}
+function renderThumbs(){
+  $('thumbs').innerHTML = files.map((f,i)=>{
+    const u = URL.createObjectURL(f);
+    return `<div class="thumb"><img src="${u}"><span class="no">${i+1}</span>
+            <button class="del" data-i="${i}">×</button></div>`;
+  }).join('');
+  $('thumbs').querySelectorAll('.del').forEach(b=>b.onclick=()=>{
+    files.splice(+b.dataset.i,1); renderThumbs();
+  });
+}
+
+// 示例文案
+$('demo').onclick = () => {
+  $('script').value = '今日游泳1500米，留了点时间练习自由泳。数据复盘来了：蛙泳1500米，总时长35分36秒。平均配速2分22秒每100米，最快配速1分58秒，1000米耗时23分11秒，半小时大概游了1280米。总消耗625千卡，平均心率129，划水739次。';
+  $('markers').value = '数据复盘来了';
+};
+
+// 生成
+$('go').onclick = async () => {
+  if(!files.length){ alert('请先上传至少一张卡片图'); return; }
+  if(!$('script').value.trim()){ alert('文案不能为空'); return; }
+
+  const fd = new FormData();
+  files.forEach(f => fd.append('images', f, f.name));
+  fd.append('script', $('script').value.trim());
+  fd.append('voice', $('voice').value);
+  fd.append('rate', $('rate').value);
+  fd.append('canvas', $('canvas').value);
+  fd.append('fit', $('fit').value);
+  fd.append('markers', $('markers').value);
+  fd.append('subtitle', $('sub_on').checked ? '1' : '');
+  fd.append('subtitle_size', $('sub_size').value);
+  fd.append('bottom_margin', $('sub_margin').value);
+  fd.append('max_sentence_chars', $('maxchars').value);
+
+  $('go').disabled = true; $('video').style.display='none'; $('dlbox').style.display='none';
+  $('logs').textContent=''; $('status').textContent='提交中…'; $('status').className='status';
+
+  const res = await fetch('/api/generate', {method:'POST', body:fd});
+  const data = await res.json();
+  if(data.error){ alert(data.error); $('go').disabled=false; $('status').textContent='已取消'; return; }
+  taskId = data.task_id;
+  timer = setInterval(poll, 900);
+  poll();
+};
+
+async function poll(){
+  const t = await (await fetch('/api/task/'+taskId)).json();
+  $('bar').style.width = (t.percent||0) + '%';
+  $('msg').textContent = t.last_message || '';
+  $('logs').textContent = (t.logs||[]).slice(-40).join('\n');
+  $('logs').scrollTop = $('logs').scrollHeight;
+
+  if(t.status === 'done'){
+    clearInterval(timer); $('go').disabled=false;
+    $('status').textContent='✓ 完成'; $('status').className='status ok';
+    $('video').src='/api/preview/'+taskId; $('video').style.display='block';
+    $('dlbox').style.display='block';
+    $('info').textContent = `${t.duration}s · ${t.size_mb}MB · ${t.images} 张图`;
+    $('dl').onclick = () => location.href='/api/download/'+taskId;
+  } else if(t.status === 'error'){
+    clearInterval(timer); $('go').disabled=false;
+    $('status').textContent='✗ '+t.error; $('status').className='status err';
+  }
+}
+</script>
+</body>
+</html>
