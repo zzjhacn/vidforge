@@ -226,6 +226,10 @@ class HTTPTTSScheme(TTSScheme):
 
     子类只需实现 _build_payload(text, cfg) 描述请求体，并声明 audio_ext。
     通用网络层（带退避重试、可选跳过 TLS 校验）在此实现一次。
+
+    **逐句串行 + 句间休眠**：远端（百炼 / 各类兼容网关）普遍有 QPS 限流，
+    并发请求会直接撞 429。因此这里固定串行合成，并在两句之间休眠
+    ``params.sleep_between_sec``（默认 1.0s）；最后一句之后不再休眠。
     """
 
     audio_ext: str = "wav"
@@ -279,21 +283,18 @@ class HTTPTTSScheme(TTSScheme):
     def synthesize(self, texts, cfg, workdir):
         workdir.mkdir(parents=True, exist_ok=True)
         url = self._endpoint(cfg)
-        concurrency = int(self.sub_params(cfg).get("concurrency", 4))
+        sub = self.sub_params(cfg)
+        # 句间休眠（秒）：远端几乎都有 QPS 限流，串行之外再主动降速更稳
+        sleep_between = float(sub.get("sleep_between_sec") or 0.0)
 
-        def _worker(item: tuple[int, str]) -> tuple[int, Path]:
-            idx, text = item
+        paths: list[Path] = []
+        for idx, text in enumerate(texts):
+            if idx and sleep_between > 0:
+                time.sleep(sleep_between)
             out = workdir / f"seg_{idx:02d}.{self.audio_ext}"
             payload = self._build_payload(text, cfg)
             out.write_bytes(self._post(url, payload, cfg))
-            return idx, out
-
-        # 本地/云端端点可并行，用有界线程池；顺序由 map 保证与 texts 一致
-        results: list[tuple[int, Path]] = []
-        with ThreadPoolExecutor(max_workers=max(1, concurrency)) as ex:
-            for r in ex.map(_worker, list(enumerate(texts))):
-                results.append(r)
-        paths = [p for _, p in sorted(results)]
+            paths.append(out)
         return _finalize(paths)
 
 

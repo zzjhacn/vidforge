@@ -186,8 +186,9 @@ tts:
   silence_between_ms: 200     # 句间静音
   tail_padding_ms: 400        # 每组尾部留白
   # 方案专属参数（覆盖配置层 vidforge/data/tts_schemes.yaml 的默认值）
-  # openai: { endpoint: "http://host/v1/audio/speech", key: "", model: "local", format: wav, concurrency: 4 }
-  # bailian: { endpoint: "https://{ws}.cn-beijing.maas.aliyuncs.com/api/v1/services/audio/tts/SpeechSynthesizer", key: "<KEY>", model: "qwen-audio-3.0-tts-flash", sample_rate: 24000 }
+  # openai: { endpoint: "http://host/v1/audio/speech", key: "", model: "local", format: wav, sleep_between_sec: 1.0 }
+  # bailian: { endpoint: "https://{ws}.cn-beijing.maas.aliyuncs.com/api/v1/services/audio/tts/SpeechSynthesizer", key: "<KEY>", model: "qwen-audio-3.0-tts-flash", sample_rate: 24000, sleep_between_sec: 1.0 }
+  # sleep_between_sec：句间休眠秒数（HTTP 方案逐句串行，远端普遍有 QPS 限流）
   # sambert:  { key: "<KEY>", sample_rate: 16000, format: wav }   # WebSocket 实时合成；音色即 model
   # 不同方案有各自独立的音色列表，Web 操作台会「先选方案、再选音色」
   #
@@ -211,8 +212,8 @@ tts:
 | 方案 | 协议 | 音色从哪来 | 语速/音量 | 备注 |
 |---|---|---|---|---|
 | `edge`（默认） | 本地库 edge-tts | 微软音色，内置 7 个常用中文 | 支持 | 免费、零配置；有频率风控，串行+退避重试 |
-| `openai` | HTTP `/v1/audio/speech` | 端点自己的音色 | 语速（映射为 `speed`） | 适配任意 OpenAI 兼容端点；**音色绑定模型** |
-| `bailian` | HTTP（qwen-audio TTS） | 百炼音色（如 `longanhuan_v3.6`） | 不支持 | 请求体为 `{model, input:{...}}` 嵌套结构；**音色绑定模型** |
+| `openai` | HTTP `/v1/audio/speech` | 端点自己的音色 | 语速（映射为 `speed`） | 适配任意 OpenAI 兼容端点；**音色绑定模型**；逐句串行 + 句间休眠 |
+| `bailian` | HTTP（qwen-audio TTS） | 百炼音色（如 `longanhuan_v3.6`） | 不支持 | 请求体为 `{model, input:{...}}` 嵌套结构；**音色绑定模型**；逐句串行 + 句间休眠 |
 | `sambert` | **WebSocket**（百炼实时合成） | **音色即 model**（如 `sambert-zhichu-v1`） | 支持（`rate` 0.5~2.0 / `volume` 0~100） | 音频按 binary 帧流式下发，见下 |
 
 #### 音色绑定模型（openai / bailian）

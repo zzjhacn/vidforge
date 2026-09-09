@@ -84,7 +84,8 @@ schemes:
       key: ""                      # Bearer token；本地服务通常留空
       model: ""               # 占位，多数本地后端忽略
       format: wav
-      concurrency: 4               # 本地/云端端点可并行
+      # 逐句串行（远端普遍有 QPS 限流），句与句之间再休眠这么久（秒）
+      sleep_between_sec: 1.0
       timeout: 30
       no_verify: false             # 本机缺 CA 根证书时再临时置 true
     voices:
@@ -107,6 +108,8 @@ schemes:
       model: "qwen-audio-3.0-tts-flash"
       format: wav
       sample_rate: 24000
+      # 逐句串行（百炼有 QPS 限流），句与句之间再休眠这么久（秒）
+      sleep_between_sec: 1.0
       timeout: 30
       no_verify: false
     voices:
