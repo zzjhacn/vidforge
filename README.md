@@ -179,14 +179,56 @@ canvas:
   fps: 30
 
 tts:
-  scheme: edge               # TTS 方案名：edge（默认）| openai | bailian
+  # 方案名，四选一：edge（默认）| openai | bailian | sambert
+  scheme: edge
   voice: zh-CN-YunxiNeural    # 云希，年轻男声
-  rate: "+10%"                # 语速（edge / openai 支持；bailian 忽略）
+  rate: "+10%"                # 语速（edge / openai / sambert 支持；bailian 忽略）
   silence_between_ms: 200     # 句间静音
   tail_padding_ms: 400        # 每组尾部留白
+  # 方案专属参数（覆盖配置层 vidforge/data/tts_schemes.yaml 的默认值）
   # openai: { endpoint: "http://host/v1/audio/speech", key: "", model: "local", format: wav, concurrency: 4 }
   # bailian: { endpoint: "https://{ws}.cn-beijing.maas.aliyuncs.com/api/v1/services/audio/tts/SpeechSynthesizer", key: "<KEY>", model: "qwen-audio-3.0-tts-flash", sample_rate: 24000 }
+  # sambert:  { key: "<KEY>", sample_rate: 16000, format: wav }   # WebSocket 实时合成；音色即 model
   # 不同方案有各自独立的音色列表，Web 操作台会「先选方案、再选音色」
+  #
+  # openai / bailian 的「音色与模型是绑定的」：配置层的 voices[].model 已登记
+  # 对应关系，页面选中音色会自动回填模型名；这里不写 model 时，运行期也会按
+  # 所选音色自动推导。写了则以显式值为准（优先级：显式 > 音色绑定 > 方案默认）。
+  #
+  # ── 方案级默认值不在这里 ─────────────────────────────────────
+  # 音色列表、端点 URL、API Key、模型名、采样率等「方案级默认值」全部由
+  # vidforge/data/tts_schemes.yaml 提供（出厂默认）。
+  # 想改默认值：复制到 configs/tts_schemes.yaml 或 ~/.vidforge/ 同名文件再改。
+  # key 支持 ${ENV_VAR} 引用，加载时自动展开（强烈建议用此方式放密钥）。
+
+四个 TTS 方案的差异：
+
+> 上述方案的「可选音色 / 端点 / Key / 模型名 / 采样率等默认值」均由
+> `vidforge/data/tts_schemes.yaml`（出厂默认）维护；想改默认值就复制
+> 到 `configs/tts_schemes.yaml` 或 `~/.vidforge/tts_schemes.yaml` 再改。
+> 密钥推荐用 `${ENV_VAR}` 引用（见配置文件头部注释）。
+
+| 方案 | 协议 | 音色从哪来 | 语速/音量 | 备注 |
+|---|---|---|---|---|
+| `edge`（默认） | 本地库 edge-tts | 微软音色，内置 7 个常用中文 | 支持 | 免费、零配置；有频率风控，串行+退避重试 |
+| `openai` | HTTP `/v1/audio/speech` | 端点自己的音色 | 语速（映射为 `speed`） | 适配任意 OpenAI 兼容端点；**音色绑定模型** |
+| `bailian` | HTTP（qwen-audio TTS） | 百炼音色（如 `longanhuan_v3.6`） | 不支持 | 请求体为 `{model, input:{...}}` 嵌套结构；**音色绑定模型** |
+| `sambert` | **WebSocket**（百炼实时合成） | **音色即 model**（如 `sambert-zhichu-v1`） | 支持（`rate` 0.5~2.0 / `volume` 0~100） | 音频按 binary 帧流式下发，见下 |
+
+#### 音色绑定模型（openai / bailian）
+
+这两个方案的音色与模型名一一对应（同一个 voice 换模型不一定可用），因此在
+方案配置的 `voices` 段把模型名一并登记：
+
+```yaml
+voices:
+  - { id: longanlingxin, model: qwen-audio-3.0-tts-plus,  label: "qwen-audio-3.0-tts-plus 龙安灵心" }
+  - { id: longshuo,      model: cosyvoice-v1,             label: "cosyvoice-v1 龙硕" }
+```
+
+- Web 操作台：选中音色 → 自动回填「模型名」输入框；
+- 运行期：未显式指定 `model` 时，按所选音色推导（写不写都对）；
+- 优先级：**显式 `tts.<scheme>.model` > 音色绑定 > `params.model` 默认值**。
 
 timeline:
   min_group_duration: 5.5     # 单张图最短停留（秒），防短句闪切
@@ -313,10 +355,19 @@ vidforge-web --port 9000           # 换端口
 |---|---|
 | 卡片图 | 点击或拖拽上传，支持多张，**上传顺序即播放顺序**，可单独删除重排 |
 | 口播文案 | 直接编辑，底部有「为朗读而写」的对照提示 |
-| 生成配置 | 音色、语速、画布尺寸、图片适配方式（contain / cover）、锚点句 |
+| 生成配置 | TTS 方案 → 音色（两步选择，选中音色自动回填绑定模型名）、**音色试听**、语速、画布尺寸、图片适配方式（contain / cover）、锚点句 |
 | 字幕 | 开关、字号、距底边距离、最大句长 |
 | 进度 | 实时百分比 + 逐条日志（与命令行输出一致） |
 | 结果 | 页面内直接播放预览，一键下载成片 |
+
+### 音色试听
+
+出片前先用它确认「方案 / 音色 / 端点 / API Key」是不是通的，省得跑完整个流程才发现 Key 填错。
+
+- 点「▶ 试听当前配置」，后端用**固定短句**合成一句并回传音频，页面直接播放，同时显示 ffprobe 实测时长。
+- 试听与正式出片**共用同一份默认值和同一套方案实现**，所以「试听能过」等价于「生成时的配音也能过」。
+- 固定句单一来源在服务端的 `TEST_TEXT`，不接受用户自定义文本——避免页面被当成免费 TTS 代理。
+- 失败时原样展示后端错误（缺 endpoint、Key 无效、音色不存在等），照着改即可。
 
 ### 锚点句怎么用
 
@@ -418,7 +469,7 @@ vidforge -c configs/swim.yaml > /tmp/run.log 2>&1; echo "exit=$?"
 按优先级排列，欢迎 PR：
 
 - [x] 编程接口 `build()`，返回结构化时间轴（已完成：`pipeline.build`，命令行与 Web 共用）
-- [x] TTS 供应商抽象层：按名字注册的 scheme（edge / openai / bailian），纯配置切换，见 `configs/swim.yaml` 注释示例与 `vidforge/tts.py` 的 `REGISTRY`
+- [x] TTS 供应商抽象层：按名字注册的 scheme（edge / openai / bailian / sambert），纯配置切换，见 `configs/swim.yaml` 注释示例与 `vidforge/tts.py` 的 `REGISTRY`
 - [ ] 历史数据存储 + 对比洞察（需接入 LLM，与断言校验配套）
 - [ ] 数据自洽性校验（如「平均配速 × 距离 ≈ 总时长」，防上游数字抄错）
 - [ ] 增量渲染，复用未变动的片段
@@ -435,7 +486,8 @@ vidforge/           内核包（场景无关）
   pipeline.py         生成编排（命令行与 Web 共用）
   profile.py          Profile 加载与默认值
   script.py           切句 + 绑定规则
-  tts.py              逐句合成 + 重试 + 实测时长
+  tts.py              按名字注册的 TTS 方案（edge / openai / bailian / sambert）
+  wsclient.py         最小 WebSocket 客户端（纯标准库，供 sambert 方案使用）
   timeline.py         音频驱动的画面停留区间
   subtitle.py         Pillow 字幕渲染（含字体探测）
   compose.py          片段渲染 / 拼接 / 字幕烧录 / 合流

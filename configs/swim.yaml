@@ -10,9 +10,14 @@ canvas:
   fps: 30
 
 tts:
-  scheme: edge                  # TTS 方案名：edge（默认）| openai | bailian
+  scheme: edge                  # TTS 方案名：edge（默认）| openai | bailian | sambert
   voice: zh-CN-YunxiNeural      # 云希，年轻男声
   rate: "+10%"
+  # ── 方案默认值不在此处配置 ────────────────────────────────────
+  # 音色列表、端点 URL、API Key、模型名、采样率等「方案级默认值」
+  # 全部由 vidforge/data/tts_schemes.yaml 提供（出厂默认）。
+  # 想改默认值：复制到 configs/tts_schemes.yaml 或 ~/.vidforge/ 同名文件再改。
+  # 想覆盖单个场景：把方案的端点/Key 等写在下方 tts.<方案>: 子块即可。
   silence_between_ms: 200       # 句间静音
   tail_padding_ms: 400          # 每组尾部留白
   # ── 切换为 OpenAI 兼容端点（可选）─────────────────────────
@@ -33,6 +38,21 @@ tts:
   #   format: wav
   #   timeout: 30
   #   no_verify: false              # 本机缺 CA 证书时临时置 true
+  # ── 切换为百炼 Sambert 实时语音合成（WebSocket，可选）──────
+  # 注意：Sambert 的「音色即 model」，voice 直接填 sambert-xxx 完整模型名。
+  # sambert:
+  #   endpoint: ""                 # 留空=官方默认 wss://dashscope.aliyuncs.com/api-ws/v1/inference
+  #   key: "<DASHSCOPE_API_KEY>"   # 握手阶段鉴权（Bearer）
+  #   workspace: ""                # 可选，业务空间 ID
+  #   format: wav                  # pcm 无文件头无法实测时长，会被拒绝
+  #   sample_rate: 16000           # 8000 / 16000 / 22050 / 24000
+  #   volume: 50                   # 0-100（不填则由顶层 volume 映射）
+  #   rate: 1.1                    # 0.5-2.0（不填则由顶层 rate 映射）
+  #   pitch: 1.0
+  #   concurrency: 1               # 每个连接串行复用；>1 时多连接并行
+  #   reuse: true                  # 复用同一条 WebSocket 跑多句
+  #   timeout: 30
+  #   no_verify: false
 
 timeline:
   min_group_duration: 5.5       # 单张图最短停留，防止短句闪切

@@ -9,9 +9,11 @@
 
 from __future__ import annotations
 
+import copy
 import json
 import re
 import shutil
+import tempfile
 import threading
 import time
 import uuid
@@ -21,7 +23,7 @@ from typing import Any
 from urllib.parse import unquote, urlparse
 
 from ..pipeline import BuildError, build
-from ..tts import list_schemes
+from ..tts import REGISTRY, TTSError, default_scheme, get_scheme, list_schemes, synthesize
 
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -29,6 +31,20 @@ CANVAS_PRESETS = {
     "1080x1920": (1080, 1920),
     "1920x1080": (1920, 1080),
     "1080x1080": (1080, 1080),
+}
+
+# 音色试听用的固定短句：用来在正式出片前快速验证「方案 / 音色 / 端点 / Key」是否可用。
+# 刻意不接受用户自定义文本——否则页面会变成任人滥用的免费 TTS 代理。
+TEST_TEXT = "你好，这是一次语音合成测试。"
+
+# 试听音频的 Content-Type（各方案输出格式不同，按扩展名映射）
+_TEST_AUDIO_TYPES = {
+    ".mp3": "audio/mpeg",
+    ".wav": "audio/wav",
+    ".ogg": "audio/ogg",
+    ".opus": "audio/ogg",
+    ".m4a": "audio/mp4",
+    ".flac": "audio/flac",
 }
 
 
@@ -120,11 +136,16 @@ def _make_bind(n_images: int, n_markers: int) -> list[dict[str, str]]:
 
 
 def _build_yaml(cfg: dict[str, Any], assets: list[str], markers: list[str]) -> str:
+    from ..ttsconfig import scheme_params
+
     w, h = CANVAS_PRESETS.get(cfg.get("canvas", "1080x1920"), (1080, 1920))
-    scheme = (cfg.get("scheme") or "edge").strip()
-    # 从方案注册表取元信息，按 needs_endpoint / supports_rate 决定写哪些字段
-    meta = {s["name"]: s for s in list_schemes()}.get(scheme, {})
+    scheme = (cfg.get("scheme") or default_scheme()).strip()
+    # 方案元信息（label/能力/默认参数）全部来自配置层，避免在 Web 层硬编码
+    sch = get_scheme({"scheme": scheme})
+    meta = sch.meta()
     supports_rate = bool(meta.get("supports_rate", True))
+    default_voice = sch.defaults().get("voice") or ""
+    params_default = scheme_params(scheme)
     lines = [
         "name: web",
         "",
@@ -135,27 +156,37 @@ def _build_yaml(cfg: dict[str, Any], assets: list[str], markers: list[str]) -> s
         "",
         "tts:",
         f"  scheme: {scheme}",
-        f"  voice: {cfg.get('voice', 'zh-CN-YunxiNeural')}",
+        f"  voice: {cfg.get('voice') or default_voice}",
     ]
-    if supports_rate and scheme != "bailian":
-        lines.append(f"  rate: \"{cfg.get('rate', '+10%')}\"")
+    if supports_rate:
+        rate_default = sch.defaults().get("rate") or "+0%"
+        lines.append(f"  rate: \"{cfg.get('rate') or rate_default}\"")
     lines += [
         "  silence_between_ms: 200",
         "  tail_padding_ms: 400",
     ]
-    # 选中需要端点的方案且用户填写了 endpoint 时，写出对应子块
+    # 选中需要端点的方案且用户填写了 endpoint/key 时，写出对应子块
     endpoint = (cfg.get("endpoint") or "").strip()
-    if endpoint and scheme in ("openai", "bailian"):
+    key = (cfg.get("key") or "").strip()
+    model = (cfg.get("model") or "").strip()
+    if not model and scheme in ("openai", "bailian"):
+        # 音色绑定模型兜底：页面未回填模型名时按所选音色推导，
+        # 写出的 YAML 与运行期 sub_params() 的推导结果保持一致
+        model = sch.voice_model(
+            {"scheme": scheme, "voice": cfg.get("voice") or default_voice}
+        ) or ""
+    if scheme in ("openai", "bailian", "sambert") and (endpoint or key or model):
         lines.append(f"  {scheme}:")
-        lines.append(f'    endpoint: "{endpoint}"')
-        key = (cfg.get("key") or "").strip()
+        if endpoint:
+            lines.append(f'    endpoint: "{endpoint}"')
         if key:
             lines.append(f'    key: "{key}"')
-        model = (cfg.get("model") or "").strip()
-        if model:
+        # sambert 的「音色即 model」，不再单独写 model，避免与 voice 冲突
+        if model and scheme != "sambert":
             lines.append(f'    model: "{model}"')
-        if scheme == "bailian":
-            sr = (cfg.get("sample_rate") or "24000").strip()
+        if scheme in ("bailian", "sambert"):
+            default_sr = str(params_default.get("sample_rate") or 24000)
+            sr = (cfg.get("sample_rate") or default_sr).strip()
             lines.append(f"    sample_rate: {sr}")
         # no_verify 默认不写（安全默认）；本机缺 CA 证书时在 YAML 手工置 true
     lines += [
@@ -204,6 +235,45 @@ def _build_yaml(cfg: dict[str, Any], assets: list[str], markers: list[str]) -> s
         "",
     ]
     return "\n".join(lines)
+
+
+def _tts_test_cfg(req: dict[str, Any]) -> dict[str, Any]:
+    """按页面传入的字段构造 tts 配置块。
+
+    以 tts.resolve() 补全缺失参数（来自配置层方案默认），再覆盖页面字段；
+    与正式出片共用同一份默认值和同一套方案实现，因此「试听能过」等价于
+    「生成时的配音也能过」，不会出现两套逻辑各自为政。
+    """
+    from ..tts import resolve as tts_resolve
+
+    scheme = (req.get("scheme") or default_scheme()).strip()
+    if scheme not in REGISTRY:
+        raise TTSError(f"未知的 TTS 方案：{scheme}；可选：{', '.join(REGISTRY)}")
+
+    # 起点：指定 scheme（+ 页面音色），其余由 tts.resolve 用配置层默认值补全。
+    # 音色先于 resolve 传入，resolve 才能按「音色绑定模型」推导出正确的 model
+    base: dict[str, Any] = {"scheme": scheme}
+    if (req.get("voice") or "").strip():
+        base["voice"] = req["voice"].strip()
+    cfg = tts_resolve(base)
+
+    # 页面字段覆盖（空值视为未指定，不覆盖）
+    if (req.get("rate") or "").strip():
+        cfg["rate"] = req["rate"].strip()
+
+    sub = cfg.get(scheme) or {}
+    for key in ("endpoint", "key", "model"):
+        val = (req.get(key) or "").strip()
+        if val:
+            sub[key] = val
+    if scheme == "sambert":
+        # Sambert 音色即 model，绝不允许 model 覆盖掉选中的音色
+        sub.pop("model", None)
+    sr = str(req.get("sample_rate") or "").strip()
+    if sr.isdigit():
+        sub["sample_rate"] = int(sr)
+    cfg[scheme] = sub
+    return cfg
 
 
 def run_task(task_id: str, root: Path) -> None:
@@ -299,6 +369,10 @@ class Handler(BaseHTTPRequestHandler):
                 # 各 TTS 方案及其音色列表（Web 据此做「先选方案、再选音色」）
                 "schemes": list_schemes(),
                 "canvas": list(CANVAS_PRESETS.keys()),
+                # 当前生效的默认方案（来自配置层 default_scheme）
+                "default_scheme": default_scheme(),
+                # 试听固定句：单一来源在后端，前端只负责展示
+                "test_text": TEST_TEXT,
             })
         elif path.startswith("/api/task/"):
             tid = unquote(path.split("/api/task/")[1])
@@ -326,8 +400,54 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self.send_error(404)
 
+    def _tts_test(self) -> None:
+        """音色试听：用固定短句跑一次当前配置的 TTS，直接回传音频字节。
+
+        成功 → 音频二进制 + X-Audio-Duration（实测秒数）；
+        失败 → JSON {"error": ...}，供前端原样展示（多为 Key/端点/音色配置问题）。
+        """
+        length = int(self.headers.get("Content-Length", 0))
+        body = self.rfile.read(length) if length else b""
+        try:
+            req = json.loads(body or b"{}")
+        except ValueError:
+            self._json({"error": "请求体不是合法 JSON"}, 400)
+            return
+
+        try:
+            cfg = _tts_test_cfg(req if isinstance(req, dict) else {})
+            with tempfile.TemporaryDirectory(prefix="vidforge-ttstest-") as td:
+                results = synthesize([TEST_TEXT], cfg, Path(td))
+                if not results:
+                    raise TTSError("未生成音频（方案返回空结果）")
+                audio_path, duration = results[0]
+                audio = audio_path.read_bytes()
+                suffix = audio_path.suffix.lower()
+        except TTSError as exc:                                # 可预期失败：配置/端点/音色
+            self._json({"error": str(exc)}, 400)
+            return
+        except Exception as exc:                               # noqa: BLE001
+            self._json({"error": f"{type(exc).__name__}: {exc}"}, 500)
+            return
+
+        if not audio:
+            self._json({"error": "端点返回空音频"}, 400)
+            return
+        self.send_response(200)
+        self.send_header("Content-Type",
+                         _TEST_AUDIO_TYPES.get(suffix, "application/octet-stream"))
+        self.send_header("Content-Length", str(len(audio)))
+        self.send_header("X-Audio-Duration", f"{duration:.3f}")
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(audio)
+
     def do_POST(self) -> None:                                 # noqa: N802
-        if urlparse(self.path).path != "/api/generate":
+        path = urlparse(self.path).path
+        if path == "/api/tts-test":
+            self._tts_test()
+            return
+        if path != "/api/generate":
             self.send_error(404)
             return
         ctype = self.headers.get("Content-Type", "")

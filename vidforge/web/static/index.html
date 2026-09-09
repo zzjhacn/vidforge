@@ -59,6 +59,8 @@
   .status{font-size:13px;color:var(--sub)}
   .status.err{color:var(--red)} .status.ok{color:var(--green)}
   video{width:100%;border-radius:12px;border:1px solid var(--line);background:#000;margin-top:14px;display:none}
+  audio{width:100%;margin-top:10px}
+  .tts-test{font-size:13px;padding:8px 14px;width:100%}
   .out{margin-top:18px}
   .pill{display:inline-block;font-size:12px;padding:3px 10px;border-radius:20px;background:rgba(56,189,248,.14);
         color:var(--cyan);margin-left:8px}
@@ -105,9 +107,18 @@
         <div id="ep_block" style="display:none" data-page-node-id="Sfw6GDiWNFXRgsmLgtM91z">
           <div class="row" data-page-node-id="19bXMsgxeAHCKHxK1TehRC"><label data-page-node-id="L5NT0ljIGpL9HoOMxUVOFA">端点 URL</label><input type="text" id="ep_url" placeholder="https://..." data-page-node-id="Kfs37G7VsKrrBbVw4IYqaM"></div>
           <div class="row" data-page-node-id="CUJAvO5aSpEgQ3e3S3qNSn"><label data-page-node-id="ziT2vxy9FrYHd55sgBUWQ0">API Key</label><input type="text" id="ep_key" placeholder="（本地服务可留空）" data-page-node-id="BCBexrJ1ulIDomNpFwhVXN"></div>
-          <div class="row" data-page-node-id="QNhwi4o8XrZkMlL9Q3t6se"><label data-page-node-id="CO6MZ5G1rmJxyVOG1bNeiA">模型名</label><input type="text" id="ep_model" placeholder="model" data-page-node-id="DCetXgaxaGQ1K5ZrKaA2UX"></div>
+          <div class="row" id="ep_model_row" data-page-node-id="QNhwi4o8XrZkMlL9Q3t6se"><label data-page-node-id="CO6MZ5G1rmJxyVOG1bNeiA">模型名</label><input type="text" id="ep_model" placeholder="model" data-page-node-id="DCetXgaxaGQ1K5ZrKaA2UX"></div>
           <div class="row" id="sr_row" style="display:none" data-page-node-id="Ah6yGFkj9wW2vOdpzGR8or"><label data-page-node-id="1cJ9m8nqmLhJlJMCxssGMY">采样率</label><input type="text" id="ep_sr" value="24000" data-page-node-id="NpXnybLnanO42L6MDdqN78"></div>
           <p class="hint" id="ep_hint" data-page-node-id="yGS5xqXvODBzU2orpcQpl4"></p>
+        </div>
+        <div class="row" style="align-items:flex-start" data-page-node-id="VFttsRow9283">
+          <label data-page-node-id="VFttsLbl1047">音色试听</label>
+          <div style="flex:1;min-width:0" data-page-node-id="VFttsBox5512">
+            <button class="tts-test" id="tts_test" data-page-node-id="VFttsBtn7730">▶ 试听当前配置</button>
+            <p class="hint" id="tts_test_hint" data-page-node-id="VFttsHint3391"></p>
+            <div class="status" id="tts_test_msg" data-page-node-id="VFttsMsg6608"></div>
+            <audio id="tts_audio" controls style="display:none" data-page-node-id="VFttsAudio4419"></audio>
+          </div>
         </div>
         <div class="row" data-page-node-id="ielBRQn5Qv3ScyU27r9TrH"><label data-page-node-id="PkkZDLtUaWeVQnwJKlAaLL">画布</label><select id="canvas" data-page-node-id="aPURvVfg6Sa7BmqapvFiV3"></select></div>
         <div class="row" data-page-node-id="4pJqSAcGRPAOIfEUiCrkJP"><label data-page-node-id="ZyFkWyRqUfmZ80apHoWoxR">图片适配</label>
@@ -169,43 +180,106 @@ const DEFAULT_SCHEMES = [
            {id:'zh-CN-XiaoxiaoNeural',label:'晓晓 · 女声温柔'},{id:'zh-CN-XiaoyiNeural',label:'晓伊 · 女声活泼'},
            {id:'zh-CN-XiaoshuangNeural',label:'晓双 · 女声少年'}]},
   {name:'openai', label:'OpenAI 兼容端点', supports_rate:true, supports_volume:false, needs_endpoint:true,
-   voices:[{id:'alloy',label:'Alloy'},{id:'ash',label:'Ash'},{id:'coral',label:'Coral'},{id:'echo',label:'Echo'},
-           {id:'fable',label:'Fable'},{id:'onyx',label:'Onyx'},{id:'nova',label:'Nova'},{id:'sage',label:'Sage'},
-           {id:'shimmer',label:'Shimmer'}]},
+   voices:[{id:'cosyvoice-v1-guovoice-af19552acf9c4682bf6bae1f4a3a3f43', model:'cosyvoice-v1', label:'cosyvoice-v1 果果'},
+           {id:'cosyvoice-clone-v1-guovoice-56288d89f9524aeebe9341f499f5e3f6', model:'cosyvoice-clone-v1', label:'cosyvoice-clone-v1 果果'},
+           {id:'longshuo',model:'cosyvoice-v1',label:'cosyvoice-v1 龙硕'},
+           {id:'longshu',model:'cosyvoice-v1',label:'cosyvoice-v1 龙书'},
+           {id:'longxiaobai',model:'cosyvoice-v1',label:'cosyvoice-v1 龙小白'},
+           {id:'longxiaocheng',model:'cosyvoice-v1',label:'cosyvoice-v1 龙小诚'},
+           {id:'longxiaoxia',model:'cosyvoice-v1',label:'cosyvoice-v1 龙小夏'},
+           {id:'qwen-audio-3.0-tts-plus-guovoice-0ff1d348619347dd8cc8659442947a06', model:'qwen-audio-3.0-tts-plus', label:'qwen-audio-3.0-tts-plus 果果'},
+           {id:'longanlingxin',model:'qwen-audio-3.0-tts-plus',label:'qwen-audio-3.0-tts-plus 龙安灵心'},
+           {id:'longanlufeng',model:'qwen-audio-3.0-tts-plus',label:'qwen-audio-3.0-tts-plus 龙安鲁风'},
+           {id:'qwen-audio-3.0-tts-flash-guovoice-8a87fa752c6f4616ad41593b3addb38c', model:'qwen-audio-3.0-tts-flash', label:'qwen-audio-3.0-tts-flash 果果'},
+           {id:'longanfengyue',model:'qwen-audio-3.0-tts-flash',label:'qwen-audio-3.0-tts-flash 龙安风悦'},
+           {id:'longanhuan_v3.6',model:'qwen-audio-3.0-tts-flash',label:'qwen-audio-3.0-tts-flash 龙安欢'},
+           {id:'longjielidou_v3.6',model:'qwen-audio-3.0-tts-flash',label:'qwen-audio-3.0-tts-flash 龙杰力豆'},
+           {id:'longpaopao_v3.6',model:'qwen-audio-3.0-tts-flash',label:'qwen-audio-3.0-tts-flash 龙泡泡'},
+           {id:'longchuanshu_v3.6',model:'qwen-audio-3.0-tts-flash',label:'qwen-audio-3.0-tts-flash 龙川叔'}]},
   {name:'bailian', label:'阿里云百炼', supports_rate:false, supports_volume:false, needs_endpoint:true,
-   voices:[{id:'longanhuan_v3.6',label:'龙安欢 v3.6'},{id:'longxiaochun_v3.6',label:'龙晓春 v3.6'},
-           {id:'longcheng_v3.6',label:'龙城 v3.6'},{id:'longxiaoxia_v3.6',label:'龙晓霞 v3.6'},
-           {id:'longwan_v3.6',label:'龙婉 v3.6'},{id:'longtu_v3.6',label:'龙图 v3.6'},
-           {id:'longhua_v3.6',label:'龙华 v3.6'},{id:'longshu_v3.6',label:'龙书 v3.6'}]},
+   voices:[{id:'longanhuan_v3.6',model:'qwen-audio-3.0-tts-flash',label:'龙安欢 v3.6'},
+           {id:'longxiaochun_v3.6',model:'qwen-audio-3.0-tts-flash',label:'龙晓春 v3.6'},
+           {id:'longcheng_v3.6',model:'qwen-audio-3.0-tts-flash',label:'龙城 v3.6'},
+           {id:'longxiaoxia_v3.6',model:'qwen-audio-3.0-tts-flash',label:'龙晓霞 v3.6'},
+           {id:'longwan_v3.6',model:'qwen-audio-3.0-tts-flash',label:'龙婉 v3.6'},
+           {id:'longtu_v3.6',model:'qwen-audio-3.0-tts-flash',label:'龙图 v3.6'},
+           {id:'longhua_v3.6',model:'qwen-audio-3.0-tts-flash',label:'龙华 v3.6'},
+           {id:'longshu_v3.6',model:'qwen-audio-3.0-tts-flash',label:'龙书 v3.6'}]},
+  // Sambert：WebSocket 实时合成，音色即 model（完整清单见 vidforge/tts.py）
+  {name:'sambert', label:'阿里云百炼 · Sambert（WebSocket）', supports_rate:true, supports_volume:true, needs_endpoint:true,
+   voices:[{id:'sambert-zhichu-v1',label:'知厨 · 舌尖男声（新闻播报）'},{id:'sambert-zhide-v1',label:'知德 · 新闻男声'},
+           {id:'sambert-zhinan-v1',label:'知楠 · 广告男声'},{id:'sambert-zhixiang-v1',label:'知祥 · 磁性男声'},
+           {id:'sambert-zhishu-v1',label:'知树 · 资讯男声'},{id:'sambert-zhiye-v1',label:'知晔 · 青年男声'},
+           {id:'sambert-zhimo-v1',label:'知墨 · 情感男声'},{id:'sambert-zhifei-v1',label:'知飞 · 激昂解说'},
+           {id:'sambert-zhilun-v1',label:'知伦 · 悬疑解说'},{id:'sambert-zhida-v1',label:'知达 · 标准男声'},
+           {id:'sambert-zhiqi-v1',label:'知琪 · 温柔女声'},{id:'sambert-zhijia-v1',label:'知佳 · 标准女声'},
+           {id:'sambert-zhiru-v1',label:'知茹 · 新闻女声'},{id:'sambert-zhiqian-v1',label:'知倩 · 资讯女声'},
+           {id:'sambert-zhistella-v1',label:'知莎 · 知性女声'},{id:'sambert-zhiting-v1',label:'知婷 · 电台女声'},
+           {id:'sambert-zhixiao-v1',label:'知笑 · 资讯女声'},{id:'sambert-zhiwei-v1',label:'知薇 · 萝莉女声'},
+           {id:'sambert-zhina-v1',label:'知娜 · 浙普女声'},{id:'sambert-zhiyuan-v1',label:'知媛 · 知心姐姐'},
+           {id:'sambert-zhiyue-v1',label:'知悦 · 客服女声'},{id:'sambert-zhigui-v1',label:'知柜 · 直播女声'},
+           {id:'sambert-zhimiao-emo-v1',label:'知妙 · 多情感女声'},{id:'sambert-zhishuo-v1',label:'知硕 · 自然男声'},
+           {id:'sambert-zhiying-v1',label:'知颖 · 软萌童声'},{id:'sambert-brian-v1',label:'Brian · 美式英语男声'},
+           {id:'sambert-betty-v1',label:'Betty · 美式英语女声'}]},
 ];
 const DEFAULT_CANVAS = ['1080x1920','1920x1080','1080x1080'];
 let offline = false;
 let SCHEMES = DEFAULT_SCHEMES;
 
-// 音色列表归一化：后端 /api/meta 与内置兜底统一为 {id, label} 对象；
+// 音色列表归一化：后端 /api/meta 与内置兜底统一为 {id, label, model} 对象；
 // 同时兼容历史 [id, label] 元组写法，避免两侧结构漂移导致下拉渲染成 undefined。
+// model = 该音色绑定的模型名（openai / bailian 用；其余方案为空）。
 function normVoices(list){
-  return (list||[]).map(v => Array.isArray(v) ? {id:v[0], label:v[1]} : v)
-                   .filter(v => v && v.id !== undefined && v.id !== null);
+  return (list||[]).map(v => {
+    const o = Array.isArray(v) ? {id:v[0], label:v[1], model:null} : v;
+    return o ? {id:o.id, label:o.label || o.id, model:o.model || ''} : o;
+  }).filter(v => v && v.id !== undefined && v.id !== null);
 }
+
+// 选中音色后，把该音色绑定的模型名回填到「模型名」输入框
+// （openai / bailian 的音色与模型是绑定的，选错模型会直接报错）
+function syncModelFromVoice(){
+  const opt = $('voice').selectedOptions && $('voice').selectedOptions[0];
+  const m = opt ? (opt.getAttribute('data-model') || '') : '';
+  if(m) $('ep_model').value = m;
+}
+$('voice').onchange = syncModelFromVoice;
 
 // 选择方案后：重填音色下拉，并按方案能力显隐语速 / 端点字段
 function applyScheme(name){
   const s = SCHEMES.find(x=>x.name===name) || SCHEMES[0];
   const vs = normVoices(s.voices);
   $('voice').innerHTML = vs.length
-    ? vs.map(v=>`<option value="${v.id}">${v.label}</option>`).join('')
+    ? vs.map(v=>`<option value="${v.id}" data-model="${v.model||''}">${v.label}</option>`).join('')
     : '<option value="">（该方案未提供音色列表，请手填）</option>';
   $('rate_row').style.display = s.supports_rate ? '' : 'none';
   $('ep_block').style.display = s.needs_endpoint ? '' : 'none';
   if(s.name==='bailian'){
     $('sr_row').style.display='';
-    $('ep_hint').textContent='百炼端点形如 https://{WorkspaceId}.cn-beijing.maas.aliyuncs.com/api/v1/services/audio/tts/SpeechSynthesizer';
+    $('ep_model_row').style.display='';
+    $('ep_sr').value='24000';
+    $('ep_url').placeholder='https://';
+    $('ep_hint').textContent='百炼端点形如 https://{WorkspaceId}.cn-beijing.maas.aliyuncs.com/api/v1/services/audio/tts/SpeechSynthesizer；音色与模型绑定，选中音色会自动回填模型名。';
   } else if(s.name==='openai'){
     $('sr_row').style.display='none';
-    $('ep_hint').textContent='OpenAI 兼容端点形如 http://host/v1/audio/speech';
+    $('ep_model_row').style.display='';
+    $('ep_url').placeholder='https://';
+    $('ep_hint').textContent='OpenAI 兼容端点形如 http://host/v1/audio/speech；音色与模型绑定，选中音色会自动回填模型名。';
+  } else if(s.name==='sambert'){
+    // Sambert 走 WebSocket：音色即 model，无需填模型名
+    $('sr_row').style.display='';
+    $('ep_model_row').style.display='none';
+    $('ep_sr').value='16000';
+    $('ep_url').placeholder='可留空，默认 wss://dashscope.aliyuncs.com/api-ws/v1/inference';
+    $('ep_hint').textContent='Sambert 为 WebSocket 实时合成：端点可留空（走官方默认地址），也可填 wss://{WorkspaceId}.cn-beijing.maas.aliyuncs.com/api-ws/v1/inference；音色即模型，无需填模型名。';
   }
   $('ep_model').placeholder = s.name==='bailian' ? 'qwen-audio-3.0-tts-flash' : 'local';
+  syncModelFromVoice();   // 切方案后按默认音色回填模型名
+  // 换了方案，上一次的试听结果即失效，收起来避免误导
+  const au = $('tts_audio');
+  if(au.src){ URL.revokeObjectURL(au.src); au.removeAttribute('src'); }
+  au.style.display = 'none';
+  $('tts_test_msg').textContent = '';
 }
 $('scheme').onchange = e => applyScheme(e.target.value);
 
@@ -214,18 +288,71 @@ fetch('/api/meta').then(r=>r.json()).then(m=>{
   $('scheme').innerHTML = SCHEMES.map(s=>`<option value="${s.name}">${s.label}</option>`).join('');
   $('canvas').innerHTML = m.canvas.map(c=>`<option value="${c}">${c}</option>`).join('');
   $('meta').textContent = '多方案 TTS · 零第三方 Web 框架';
-  applyScheme('edge');
+  $('tts_test_hint').textContent = '测试句：' + (m.test_text || '（后端未提供）');
+  // 默认方案来自配置层（configs/tts_schemes.yaml 的 default_scheme）
+  const init = (m.default_scheme && SCHEMES.find(s=>s.name===m.default_scheme)) ? m.default_scheme : 'edge';
+  $('scheme').value = init;
+  applyScheme(init);
 }).catch(()=>{
   offline = true;
   $('scheme').innerHTML = SCHEMES.map(s=>`<option value="${s.name}">${s.label}</option>`).join('');
   $('canvas').innerHTML = DEFAULT_CANVAS.map(c=>`<option value="${c}">${c}</option>`).join('');
   $('meta').textContent = '⚠ 未连接后端，仅供预览';
+  $('tts_test_hint').textContent = '未连接后端，试听不可用';
   applyScheme('edge');
   $('go').onclick = () => alert('请先启动服务：vidforge-web\n然后访问 http://127.0.0.1:8765');
 });
 
 // 语速滑块联动
 $('rate_r').oninput = e => $('rate').value = (e.target.value>0?'+':'') + e.target.value + '%';
+
+// 音色试听：用后端固定短句跑一次当前配置，验证方案/音色/端点/Key 是否可用
+$('tts_test').onclick = async () => {
+  if(offline){ alert('请先启动服务：vidforge-web\n然后访问 http://127.0.0.1:8765'); return; }
+  const btn = $('tts_test'), au = $('tts_audio'), msg = $('tts_test_msg');
+  const scheme = $('scheme').value;
+  const smeta = SCHEMES.find(x=>x.name===scheme) || {};
+
+  const payload = { scheme, voice: $('voice').value };
+  if(smeta.supports_rate) payload.rate = $('rate').value;
+  if(smeta.needs_endpoint){
+    payload.endpoint = $('ep_url').value.trim();
+    payload.key = $('ep_key').value.trim();
+    if(scheme !== 'sambert') payload.model = $('ep_model').value.trim();
+    if(scheme === 'bailian' || scheme === 'sambert') payload.sample_rate = $('ep_sr').value.trim();
+  }
+
+  btn.disabled = true;
+  btn.textContent = '合成中…';
+  msg.className = 'status';
+  msg.textContent = '正在请求 TTS…';
+  au.style.display = 'none';
+
+  try{
+    const r = await fetch('/api/tts-test', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    if(!r.ok){
+      const e = await r.json().catch(()=>({}));
+      throw new Error(e.error || ('HTTP ' + r.status));
+    }
+    const dur = parseFloat(r.headers.get('X-Audio-Duration') || '0');
+    const blob = await r.blob();
+    if(au.src) URL.revokeObjectURL(au.src);
+    au.src = URL.createObjectURL(blob);
+    au.style.display = '';
+    au.play().catch(()=>{});          // 浏览器可能拦截自动播放，交给用户手动点
+    msg.className = 'status ok';
+    msg.textContent = dur ? `合成成功 · 实测 ${dur.toFixed(2)} 秒` : '合成成功';
+  }catch(err){
+    msg.className = 'status err';
+    msg.textContent = '试听失败：' + err.message;
+  }finally{
+    btn.disabled = false;
+    btn.textContent = '▶ 试听当前配置';
+  }
+};
 
 // 上传：点击 + 拖拽
 const drop = $('drop');
@@ -272,8 +399,9 @@ $('go').onclick = async () => {
   if(smeta.needs_endpoint){
     fd.append('endpoint', $('ep_url').value.trim());
     fd.append('key', $('ep_key').value.trim());
-    fd.append('model', $('ep_model').value.trim());
-    if(scheme==='bailian') fd.append('sample_rate', $('ep_sr').value.trim());
+    // sambert 音色即 model，不提交 model，避免与 voice 冲突
+    if(scheme!=='sambert') fd.append('model', $('ep_model').value.trim());
+    if(scheme==='bailian' || scheme==='sambert') fd.append('sample_rate', $('ep_sr').value.trim());
   }
   fd.append('canvas', $('canvas').value);
   fd.append('fit', $('fit').value);

@@ -83,10 +83,11 @@ def build(
         emit(f"  [{g.index}] → {g.asset_name}: {body}")
 
     # ── 2. 语音合成（逐句，时长实测）─────────────────────────
-    t = profile.tts
+    # 用 tts.resolve 把缺省的 voice/rate/volume/方案子块从配置层补齐，
+    # 日志里看到的就是「真正会出片」的方案与音色
+    t = tts.resolve(profile.tts)
     scheme = t.get("scheme") or t.get("provider") or "edge"
     emit(f"\n语音合成：scheme={scheme} voice={t.get('voice')} …", 10)
-    # 整块 tts 配置传入，由 tts.synthesize 按 scheme 分发到对应方案实现
     synthesized = tts.synthesize(
         list(sentences),
         t,

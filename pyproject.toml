@@ -44,8 +44,11 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["vidforge"]
-# 页面是包内资源，需显式声明才会打进 wheel
-artifacts = ["vidforge/web/static/*.html"]
+# 页面与 TTS 方案出厂配置都是包内资源，需显式声明才会打进 wheel
+artifacts = [
+    "vidforge/web/static/*.html",
+    "vidforge/data/*.yaml",
+]
 
 [tool.hatch.build.targets.sdist]
 include = [

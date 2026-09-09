@@ -1,0 +1,186 @@
+# ═══════════════════════════════════════════════════════════════════
+# vidforge · TTS 方案系统级配置（出厂默认）
+# ═══════════════════════════════════════════════════════════════════
+#
+# 这里是「TTS 方案默认值」的唯一来源：音色列表、端点 URL、API Key、
+# 模型名、语速、采样率等全部在此配置，代码中不再写死任何默认值。
+#
+# ── 覆盖方式（四选一，越靠前优先级越高）─────────────────────────
+#   1. 环境变量 VIDFORGE_TTS_CONFIG 指向的 YAML 文件
+#   2. 当前工作目录下的 configs/tts_schemes.yaml
+#   3. ~/.vidforge/tts_schemes.yaml
+#   4. 本文件（包内出厂默认，随包发布；升级会被覆盖，请勿直接改这里）
+#
+#   推荐做法：把本文件复制到 configs/tts_schemes.yaml 或 ~/.vidforge/
+#   再改，升级 vidforge 时不受影响。
+#
+# ── 与场景配置（如 configs/swim.yaml）的关系 ──────────────────────
+#   本文件 = 方案级默认值（全局）
+#   场景 YAML 的 tts: 块 = 场景级覆盖（只对当前出片生效），优先级更高
+#
+# ── 结构说明 ──────────────────────────────────────────────────────
+#   schemes.<名称>:
+#     label            方案展示名（Web 下拉）
+#     supports_rate    是否支持语速（edge 语义 "+10%"）
+#     supports_volume  是否支持音量
+#     needs_endpoint   是否需要端点 URL
+#     defaults         公共参数默认值（voice / rate / volume）
+#     params           方案专属参数默认值（endpoint / key / model / ...）
+#     voices           可选音色列表（id + label + model），Web 据此渲染下拉
+#
+#   ── 音色绑定模型（voices[].model）──────────────────────────────
+#     openai / bailian 这类多模型后端，音色与模型名是绑定的：同一个 voice
+#     在不同模型下不一定可用。因此在 voices 段登记 model：
+#       * 页面选中音色 → 自动回填「模型名」输入框；
+#       * 运行期若未显式指定 model → 用当前音色绑定的模型兜底。
+#     优先级：上层显式 model > 音色绑定 model > params.model。
+#     edge / sambert 无需该字段（sambert 音色即模型）。
+#
+#   注意：Sambert 的 params.rate / params.volume 与公共 rate / volume
+#   同名但语义不同（0.5~2.0 与 0~100）。留 null 表示「由公共参数映射」。
+#
+# ── 密钥安全 ──────────────────────────────────────────────────────
+#   key 支持 ${环境变量} 引用，加载时展开。强烈建议用这种方式，
+#   不要把明文 Key 写进会被提交到 Git 的文件里。
+#
+# ═══════════════════════════════════════════════════════════════════
+
+# 未指定 tts.scheme 时使用的方案
+default_scheme: edge
+
+schemes:
+  # ── 方案 1：Edge TTS（微软，免费 · 非官方接口）──────────────────
+  edge:
+    label: "Edge TTS（微软，免费 · 非官方接口）"
+    supports_rate: true
+    supports_volume: true
+    needs_endpoint: false
+    defaults:
+      voice: zh-CN-YunxiNeural
+      rate: "+10%"
+      volume: "+0%"
+    params: {}
+    voices:
+      - { id: zh-CN-YunxiNeural,      label: "云希 · 年轻男声" }
+      - { id: zh-CN-YunjianNeural,    label: "云健 · 男声解说" }
+      - { id: zh-CN-YunyangNeural,    label: "云扬 · 男声新闻" }
+      - { id: zh-CN-YunxiaNeural,     label: "云晓 · 男声少年" }
+      - { id: zh-CN-XiaoxiaoNeural,   label: "晓晓 · 女声温柔" }
+      - { id: zh-CN-XiaoyiNeural,     label: "晓伊 · 女声活泼" }
+      - { id: zh-CN-XiaoshuangNeural, label: "晓双 · 女声少年" }
+
+  # ── 方案 2：OpenAI 兼容端点（/v1/audio/speech）──────────────────
+  openai:
+    label: "OpenAI 兼容端点（/v1/audio/speech）"
+    supports_rate: true            # 映射到 speed 字段
+    supports_volume: false
+    needs_endpoint: true
+    defaults:
+      voice: longshuo
+      rate: "+0%"
+      volume: "+0%"
+    params:
+      endpoint: ""                 # 必填，例如 http://127.0.0.1:5000/v1/audio/speech
+      key: ""                      # Bearer token；本地服务通常留空
+      model: ""               # 占位，多数本地后端忽略
+      format: wav
+      concurrency: 4               # 本地/云端端点可并行
+      timeout: 30
+      no_verify: false             # 本机缺 CA 根证书时再临时置 true
+    voices:
+      # model 即该音色所属的模型名；选中音色后页面自动回填、运行期自动兜底
+      - { id: xxx,    model: xxxx,   label: "xxxx" }
+
+  # ── 方案 3：阿里云百炼（qwen-audio TTS，HTTP）───────────────────
+  bailian:
+    label: "阿里云百炼（qwen-audio TTS）"
+    supports_rate: false
+    supports_volume: false
+    needs_endpoint: true
+    defaults:
+      voice: longanhuan_v3.6
+      rate: "+0%"
+      volume: "+0%"
+    params:
+      endpoint: ""                 # 必填，百炼完整路径
+      key: "${DASHSCOPE_API_KEY}"  # Bearer token
+      model: "qwen-audio-3.0-tts-flash"
+      format: wav
+      sample_rate: 24000
+      timeout: 30
+      no_verify: false
+    voices:
+      # 百炼的 v3.6 系列音色均属于 qwen-audio-3.0-tts-flash；
+      # 若后续接入 plus 系列音色，在下面登记对应的 model 即可（选中即自动回填）
+      - { id: longanhuan_v3.6,    model: qwen-audio-3.0-tts-flash, label: "龙安欢 v3.6" }
+      - { id: longxiaochun_v3.6,  model: qwen-audio-3.0-tts-flash, label: "龙晓春 v3.6" }
+      - { id: longcheng_v3.6,     model: qwen-audio-3.0-tts-flash, label: "龙城 v3.6" }
+      - { id: longxiaoxia_v3.6,   model: qwen-audio-3.0-tts-flash, label: "龙晓霞 v3.6" }
+      - { id: longwan_v3.6,       model: qwen-audio-3.0-tts-flash, label: "龙婉 v3.6" }
+      - { id: longtu_v3.6,        model: qwen-audio-3.0-tts-flash, label: "龙图 v3.6" }
+      - { id: longhua_v3.6,       model: qwen-audio-3.0-tts-flash, label: "龙华 v3.6" }
+      - { id: longshu_v3.6,       model: qwen-audio-3.0-tts-flash, label: "龙书 v3.6" }
+
+  # ── 方案 4：阿里云百炼 · Sambert 实时语音合成（WebSocket）────────
+  # 注意：Sambert 的「音色即 model」，voice 直接填 sambert-xxx 完整模型名。
+  sambert:
+    label: "阿里云百炼 · Sambert 实时语音合成（WebSocket）"
+    supports_rate: true            # params.rate：0.5~2.0
+    supports_volume: true          # params.volume：0~100
+    needs_endpoint: true           # 可留空，缺省走 default_endpoint
+    defaults:
+      voice: sambert-zhichu-v1
+      rate: "+0%"
+      volume: "+0%"
+    params:
+      endpoint: ""                 # 留空则用 default_endpoint
+      default_endpoint: "wss://dashscope.aliyuncs.com/api-ws/v1/inference"
+      # 业务空间专属域名示例：
+      # default_endpoint: "wss://{WorkspaceId}.cn-beijing.maas.aliyuncs.com/api-ws/v1/inference"
+      key: "${DASHSCOPE_API_KEY}"  # 握手阶段鉴权（Bearer）
+      workspace: ""                # 可选，业务空间 ID（X-DashScope-WorkSpace）
+      format: wav                  # pcm 无文件头无法实测时长，会被拒绝
+      sample_rate: 16000           # 8000 / 16000 / 22050 / 24000
+      volume: null                 # 0-100；null = 由公共 volume 映射（+0% → 50）
+      rate: null                   # 0.5-2.0；null = 由公共 rate 映射（+10% → 1.1）
+      pitch: 1.0                   # 0.5-2.0
+      word_timestamp_enabled: false
+      concurrency: 1               # 每个连接串行复用；>1 时多连接并行
+      reuse: true                  # 复用同一条 WebSocket 连接跑多句
+      timeout: 30
+      no_verify: false
+    voices:
+      - { id: sambert-zhichu-v1,      label: "知厨 · 舌尖男声（新闻播报）" }
+      - { id: sambert-zhide-v1,       label: "知德 · 新闻男声" }
+      - { id: sambert-zhinan-v1,      label: "知楠 · 广告男声" }
+      - { id: sambert-zhixiang-v1,    label: "知祥 · 磁性男声（配音解说）" }
+      - { id: sambert-zhishu-v1,      label: "知树 · 资讯男声" }
+      - { id: sambert-zhiye-v1,       label: "知晔 · 青年男声" }
+      - { id: sambert-zhimo-v1,       label: "知墨 · 情感男声" }
+      - { id: sambert-zhiming-v1,     label: "知茗 · 诙谐男声" }
+      - { id: sambert-zhihao-v1,      label: "知浩 · 咨询男声" }
+      - { id: sambert-zhida-v1,       label: "知达 · 标准男声" }
+      - { id: sambert-zhifei-v1,      label: "知飞 · 激昂解说" }
+      - { id: sambert-zhilun-v1,      label: "知伦 · 悬疑解说" }
+      - { id: sambert-zhiqi-v1,       label: "知琪 · 温柔女声" }
+      - { id: sambert-zhijia-v1,      label: "知佳 · 标准女声（新闻播报）" }
+      - { id: sambert-zhiru-v1,       label: "知茹 · 新闻女声" }
+      - { id: sambert-zhiqian-v1,     label: "知倩 · 资讯女声" }
+      - { id: sambert-zhistella-v1,   label: "知莎 · 知性女声" }
+      - { id: sambert-zhiting-v1,     label: "知婷 · 电台女声" }
+      - { id: sambert-zhixiao-v1,     label: "知笑 · 资讯女声" }
+      - { id: sambert-zhiwei-v1,      label: "知薇 · 萝莉女声" }
+      - { id: sambert-zhijing-v1,     label: "知婧 · 严厉女声" }
+      - { id: sambert-zhiya-v1,       label: "知雅 · 严厉女声" }
+      - { id: sambert-zhina-v1,       label: "知娜 · 浙普女声" }
+      - { id: sambert-zhiyuan-v1,     label: "知媛 · 知心姐姐" }
+      - { id: sambert-zhiyue-v1,      label: "知悦 · 客服女声" }
+      - { id: sambert-zhigui-v1,      label: "知柜 · 直播女声" }
+      - { id: sambert-zhimao-v1,      label: "知猫 · 直播女声" }
+      - { id: sambert-zhimiao-emo-v1, label: "知妙 · 多情感女声" }
+      - { id: sambert-zhishuo-v1,     label: "知硕 · 自然男声（数字人）" }
+      - { id: sambert-zhiying-v1,     label: "知颖 · 软萌童声" }
+      - { id: sambert-brian-v1,       label: "Brian · 美式英语男声" }
+      - { id: sambert-betty-v1,       label: "Betty · 美式英语女声" }
+      - { id: sambert-cally-v1,       label: "Cally · 美式英语女声" }
+      - { id: sambert-cindy-v1,       label: "Cindy · 美式英语女声" }
