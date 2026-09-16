@@ -218,7 +218,7 @@ def _build_yaml(cfg: dict[str, Any], assets: list[str], markers: list[str]) -> s
     lines += [
         "",
         "subtitle:",
-        f"  enabled: {str(bool(cfg.get('subtitle', True))).lower()}",
+        f"  enabled: {str(cfg.get('subtitle') == '1').lower()}",
         f"  size: {int(cfg.get('subtitle_size', 58))}",
         f"  bottom_margin: {int(cfg.get('bottom_margin', 260))}",
         "  max_chars_per_line: 15",
