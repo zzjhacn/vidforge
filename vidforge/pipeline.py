@@ -14,7 +14,7 @@ from typing import Any, Callable
 
 from . import compose, script as script_mod, subtitle, timeline, tts
 from .profile import Profile
-from .util import build_audio_track, image_size, to_wav
+from .util import build_audio_track, image_size, resolve_transition, to_wav
 
 
 class BuildError(RuntimeError):
@@ -123,6 +123,7 @@ def build(
     clips: list[Path] = []
     for i, g in enumerate(groups):
         asset_cfg = profile.asset(g.asset_name)
+        prev_asset_cfg = profile.asset(groups[i - 1].asset_name) if i > 0 else None
         image_path = profile.resolve(asset_cfg["file"])
         if not image_path.exists():
             raise BuildError(f"素材不存在 {image_path}")
@@ -133,10 +134,19 @@ def build(
                 f"  警告：{image_path.name} 为 {w}x{h}，"
                 f"与画布 {profile.width}x{profile.height} 不同（cover 模式将裁切填充）"
             )
+        # 转场：资产级 transition 优先，回退全局 profile.transition；random 已展开为具体转场名。
+        # 首段无 prev → 强制硬切（无 incoming 转场）。
+        tr = resolve_transition(asset_cfg.get("transition") or profile.transition)
+        prev_for_render = prev_asset_cfg if tr else None
         clip = workdir / f"clip_{g.index}.mp4"
-        compose.render_clip(asset_cfg, g, profile, clip)
+        compose.render_clip(
+            asset_cfg, g, profile, clip,
+            prev_asset_cfg=prev_for_render,
+            transition=tr,
+        )
         clips.append(clip)
-        emit(f"  [{g.index}] {g.asset_name} → {clip.name} ({g.dur:.2f}s)",
+        tag = f"转场={tr['type']}" if prev_for_render else "硬切"
+        emit(f"  [{g.index}] {g.asset_name} → {clip.name} ({g.dur:.2f}s, {tag})",
              40 + int(28 * (i + 1) / len(groups)))
 
     # ── 5. 音轨：按时间轴精确混排 ────────────────────────────

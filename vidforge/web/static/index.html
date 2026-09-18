@@ -127,6 +127,15 @@
             <option value="cover" data-page-node-id="qNK0uoez2446nvKKaVmuQP">cover · 满屏裁切填充</option>
           </select>
         </div>
+        <div class="row" data-page-node-id="TrRowVf1"><label data-page-node-id="TrLblVf1">转场效果</label>
+          <select id="transition" data-page-node-id="TrSelVf1">
+            <option value="fade">fade · 渐变</option>
+          </select>
+          <input type="number" id="transition_dur" data-page-node-id="TrDurVf1"
+                 min="0.1" max="2" step="0.1" value="0.5" title="转场时长（秒），可选 0.1–2.0"
+                 style="width:96px;flex:none">
+          <span data-page-node-id="TrUnitVf1" style="color:var(--sub);font-size:13px">秒</span>
+        </div>
         <div class="row" data-page-node-id="F1b0OIvLgG1fEkffr3kBGc"><label data-page-node-id="2lC0GdvTEjWjOlCmmccMoL">锚点句</label>
           <input type="text" id="markers" placeholder="数据复盘来了" data-page-node-id="2sDH7zzb9Nz3MGCGk0hpUh">
         </div>
@@ -223,6 +232,8 @@ const DEFAULT_SCHEMES = [
            {id:'sambert-betty-v1',label:'Betty · 美式英语女声'}]},
 ];
 const DEFAULT_CANVAS = ['1080x1920','1920x1080','1080x1080'];
+// 未连后端时的转场下拉兜底（真实列表由 /api/meta 的 transitions 字段按本机 ffmpeg 探测）
+const DEFAULT_TRANSITIONS = ['fade','dissolve','pixelize','wipeleft','wiperight','slideleft','slideright','zoomin','random'];
 let offline = false;
 let SCHEMES = DEFAULT_SCHEMES;
 
@@ -287,6 +298,11 @@ fetch('/api/meta').then(r=>r.json()).then(m=>{
   if(m.schemes && m.schemes.length) SCHEMES = m.schemes;
   $('scheme').innerHTML = SCHEMES.map(s=>`<option value="${s.name}">${s.label}</option>`).join('');
   $('canvas').innerHTML = m.canvas.map(c=>`<option value="${c}">${c}</option>`).join('');
+  // 转场下拉：用本机 ffmpeg 实际支持的 xfade 转场名动态生成，再追加「随机」
+  const trans = (m.transitions && m.transitions.length) ? m.transitions : DEFAULT_TRANSITIONS;
+  $('transition').innerHTML = trans.map(t=>`<option value="${t}">${t}</option>`).join('')
+    + '<option value="random">随机（每次切换不同）</option>';
+  $('transition').value = trans.includes('fade') ? 'fade' : (trans[0] || 'fade');
   $('meta').textContent = '多方案 TTS · 零第三方 Web 框架';
   $('tts_test_hint').textContent = '测试句：' + (m.test_text || '（后端未提供）');
   // 默认方案来自配置层（configs/tts_schemes.yaml 的 default_scheme）
@@ -297,6 +313,9 @@ fetch('/api/meta').then(r=>r.json()).then(m=>{
   offline = true;
   $('scheme').innerHTML = SCHEMES.map(s=>`<option value="${s.name}">${s.label}</option>`).join('');
   $('canvas').innerHTML = DEFAULT_CANVAS.map(c=>`<option value="${c}">${c}</option>`).join('');
+  $('transition').innerHTML = DEFAULT_TRANSITIONS.map(t=>`<option value="${t}">${t}</option>`).join('')
+    + '<option value="random">随机（每次切换不同）</option>';
+  $('transition').value = 'fade';
   $('meta').textContent = '⚠ 未连接后端，仅供预览';
   $('tts_test_hint').textContent = '未连接后端，试听不可用';
   applyScheme('edge');
@@ -405,6 +424,8 @@ $('go').onclick = async () => {
   }
   fd.append('canvas', $('canvas').value);
   fd.append('fit', $('fit').value);
+  fd.append('transition', $('transition').value);   // 转场效果（xfade 名 / random / fade）
+  fd.append('transition_duration', $('transition_dur').value);  // 转场时长（秒）
   fd.append('markers', $('markers').value);
   fd.append('subtitle', $('sub_on').checked ? '1' : '0');
   fd.append('subtitle_size', $('sub_size').value);

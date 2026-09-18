@@ -47,6 +47,15 @@ DEFAULTS: dict[str, Any] = {
         "box_padding": 26,
         "box_radius": 22,
     },
+    "transition": {
+        # 图片切换转场（烘焙进每张片段开头的 incoming 过渡）。
+        # type: xfade 转场名（fade/dissolve/pixelize/wipeleft/...，见 `ffmpeg -h filter=xfade`）
+        #       也可写 "random" → 每次切换随机选一种（运行时按本机 ffmpeg 探测列表取）。
+        #       写 "none"/"off" 或省略 → 硬切（无转场）。
+        # duration: 转场时长（秒），会被裁剪到不超过该组时长。
+        "type": "fade",
+        "duration": 0.5,
+    },
     "output": {
         "video_codec": "libx264",
         "preset": "medium",
@@ -78,6 +87,7 @@ class Profile:
         self.tts: dict = merged["tts"]
         self.timeline: dict = merged["timeline"]
         self.subtitle: dict = merged["subtitle"]
+        self.transition: dict = merged["transition"]
         self.output: dict = merged["output"]
         self.script_cfg: dict = data.get("script", {})
         self.assets: list[dict] = data.get("assets", [])

@@ -31,6 +31,7 @@ vidforge 把这件事变成一条命令。你只需要提供：
 - **字幕自己画** —— 不依赖 ffmpeg 的 `drawtext`/`subtitles` 滤镜（很多发行版没编译），用 Pillow 渲染，中文断行和描边完全可控
 - **TTS 方案可切换** —— 默认 Edge TTS（免费，非官方接口，本地即可跑）；也可切到 OpenAI 兼容端点 / 阿里云百炼等云端方案，纯配置按名字切换，内核零改动（见 `configs/swim.yaml` 注释示例）
 - **命令行 + 可视化双入口** —— 习惯终端就用命令行，不想记参数就开 Web 操作页面（**零第三方 Web 框架**，纯标准库实现）
+- **图片切换转场** —— 支持卡片间渐变 / 网格化 / 滑动等 58 种 xfade 转场，可全局统一或逐卡指定，也支持 `random` 随机；时长可调（默认 0.5s）
 
 ---
 
@@ -293,6 +294,72 @@ output:
 | `motion`            | 前景动效：`{type: kenburns, from, to}` 缓慢推近，或 `{type: static}` |
 | `background`        | `contain` 模式下的背景填充方式，目前支持 `blur`                          |
 | `background_motion` | 背景可独立做动效，与前景解耦                                            |
+| `transition`        | 卡片切换转场（可选，覆盖全局）：`{type: fade, duration: 0.5}`，详见下方「切换转场」 |
+
+### 切换转场（transition）
+
+vidforge 的「动画」分两层：**卡片内动效**（`motion` / `background_motion`，见上表）与**卡片间切换转场**（`transition`，本节）。转场烘焙进每张片段开头的 incoming 过渡，**不改变总时长**，因此音频对齐不受影响。
+
+**两种指定粒度：**
+
+- **全局统一**（写在 YAML 顶层，所有切换生效）：
+
+  ```yaml
+  transition:
+    type: fade          # 转场类型
+    duration: 0.5       # 时长（秒）
+  ```
+
+- **逐卡片覆盖**（写在某个 `assets[]` 里，只对该卡切到下一张生效；不写则回退全局）：
+
+  ```yaml
+  assets:
+    - name: card1
+      file: assets/card1.png
+      transition:
+        type: pixelize   # 这张切到下一张用「网格化」
+        duration: 0.8
+    - name: card2
+      file: assets/card2.png     # 没写 transition → 用全局默认
+  ```
+
+**`type` 取值：**
+
+| 值 | 含义 |
+| --- | --- |
+| `fade` | 渐变（**默认值**，不写 `transition` 也是它） |
+| `dissolve` / `pixelize` / `wipeleft` / `slideleft` / `zoomin` / `circleopen` … | xfade 内置转场名（本机共 58 种，随 ffmpeg 版本变化） |
+| `random` | 每次切换**随机**选一种（运行时按本机 ffmpeg 探测列表取，跨环境自适应） |
+| `none` / `off` / 省略 | 硬切（无转场） |
+
+> 查本机全部可用转场名：`ffmpeg -h filter=xfade`（看 `transition` 枚举项，`from -1 to 57` 范围即有效转场）。
+
+**`duration`**：秒，默认 `0.5`；建议 `0.1–2.0`。受 `timeline.min_group_duration`（默认 5.5s）兜底，不会吞掉短卡。
+
+**完整示例（转场 + 卡片内动效一起）：**
+
+```yaml
+name: demo
+canvas: { width: 1080, height: 1920, fps: 30 }
+
+transition:                 # 全局转场默认
+  type: fade
+  duration: 0.6
+
+assets:
+  - name: a
+    file: assets/a.png
+    fit: cover
+    motion: { type: kenburns, from: 1.0, to: 1.05 }
+  - name: b
+    file: assets/b.png
+    fit: contain
+    background: blur
+    background_blur: 20
+    transition: { type: random, duration: 0.8 }   # 这张切下一张随机转场
+```
+
+一句话：**图片之间怎么过渡**写 `transition`（顶层 = 全局，assets 里 = 单卡覆盖）；**单张图停留时怎么动**写 `motion` / `background_motion`；都不写则用默认 `fade 0.5s` + cover 轻微推近。
 
 ### 字幕样式（`subtitle`）
 

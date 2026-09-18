@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import math
+import random
 import shutil
 import subprocess
 import wave
@@ -187,3 +188,68 @@ def build_audio_track(
         w.setframerate(sample_rate)
         w.writeframes(buf.tobytes())
     return out_path
+
+
+# ════════════════════════════════════════════════════════════
+# 图片切换转场（xfade）能力探测与解析
+# ════════════════════════════════════════════════════════════
+
+_XFADE_TRANSITIONS_CACHE: list[str] | None = None
+
+
+def list_xfade_transitions() -> list[str]:
+    """探测本机 ffmpeg 的 xfade 支持的全部转场名（排除 custom）。
+
+    做法：解析 `ffmpeg -h filter=xfade` 的帮助文本，抓带 `..FV` 标志的枚举项
+    （即 transition 选项的取值）。转场数量随 ffmpeg 版本变化（4.x 约 31 种、
+    9.x 达 58 种），故**不硬编码数量**，每次运行按实际环境枚举。
+    结果带进程级缓存，供「随机」模式与 Web 下拉复用。
+    """
+    global _XFADE_TRANSITIONS_CACHE
+    if _XFADE_TRANSITIONS_CACHE is not None:
+        return _XFADE_TRANSITIONS_CACHE
+    try:
+        proc = subprocess.run(
+            [ffmpeg(), "-hide_banner", "-h", "filter=xfade"],
+            capture_output=True, text=True, errors="replace",
+        )
+        out = (proc.stdout or "") + (proc.stderr or "")
+    except Exception:
+        _XFADE_TRANSITIONS_CACHE = ["fade"]
+        return _XFADE_TRANSITIONS_CACHE
+
+    names: list[str] = []
+    for line in out.splitlines():
+        if "..FV" not in line:
+            continue
+        parts = line.split()
+        if len(parts) < 2 or parts[0] == "custom":
+            continue
+        # 仅保留「枚举值」行：第二列是整数 id（0..57 / -1）。
+        # 选项名行（transition/duration/offset）第二列是 <int>/<duration>，需排除。
+        try:
+            int(parts[1])
+        except ValueError:
+            continue
+        names.append(parts[0])
+    _XFADE_TRANSITIONS_CACHE = names or ["fade"]
+    return _XFADE_TRANSITIONS_CACHE
+
+
+def resolve_transition(raw: dict | None) -> dict | None:
+    """把配置里的 transition 块解析成渲染期可用的转场参数。
+
+    raw 形如 {type: "fade" | "random" | "none", duration: 0.5} 或 None。
+    返回 None（禁用转场）或 {type: <具体转场名>, duration: float}。
+    type=="random" 会立即展开成探测列表里的随机一种（每次调用独立随机）。
+    """
+    if not raw:
+        return None
+    t = str(raw.get("type") or "fade").strip().lower()
+    if t in ("", "none", "off", "false"):
+        return None
+    dur = float(raw.get("duration", 0.5) or 0.5)
+    if t == "random":
+        opts = list_xfade_transitions()
+        t = random.choice(opts) if opts else "fade"
+    return {"type": t, "duration": dur}

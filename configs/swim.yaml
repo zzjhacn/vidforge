@@ -10,9 +10,11 @@ canvas:
   fps: 30
 
 tts:
-  scheme: edge                  # TTS 方案名：edge（默认）| openai | bailian | sambert
-  voice: zh-CN-YunxiNeural      # 云希，年轻男声
-  rate: "+10%"
+  openai:
+    model: "qwen-audio-3.0-tts-plus"
+  scheme: openai                  # TTS 方案名：edge（默认）| openai | bailian | sambert
+  voice: longanlingxin
+  rate: "+20%"
   # ── 方案默认值不在此处配置 ────────────────────────────────────
   # 音色列表、端点 URL、API Key、模型名、采样率等「方案级默认值」
   # 全部由 vidforge/data/tts_schemes.yaml 提供（出厂默认）。

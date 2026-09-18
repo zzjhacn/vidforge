@@ -23,63 +23,105 @@ def _kenburns_filter(zoom_from: float, zoom_to: float, frames: int, fps: int) ->
     )
 
 
-def render_clip(
+def _render_to_canvas(
     asset_cfg: dict,
-    group: Group,
     profile: Profile,
-    out_path: Path,
-) -> Path:
-    """渲染一个组的视频片段：静态图 + 动效 → 定长无声视频。"""
-    width, height, fps = profile.width, profile.height, profile.fps
-    frames = max(1, round(group.dur * fps))
-    src = str(profile.resolve(asset_cfg["file"]))
+    fps: int,
+    in_label: str,
+    out_label: str,
+    frames: int | None = None,
+    motion: bool = True,
+) -> str:
+    """把一张图渲染成满画布视频流（cover 满屏裁切 / contain 完整显示+模糊背景）。
+
+    返回 filter 片段字符串，以 `format=yuv420p{out_label}` 结尾。
+    motion=True 时套用 Ken Burns 推近（cover 用前景、contain 用背景层）；
+    转场用的「上一张图」只需短暂出现，传 motion=False 取静态帧即可。
+    """
+    width, height = profile.width, profile.height
     fit = asset_cfg.get("fit", "cover")
-    motion = asset_cfg.get("motion", {})
-    bg_motion = asset_cfg.get("background_motion", {})
 
     if fit == "contain":
-        # 前景完整显示（零信息损失），模糊放大背景兜底；背景可单独做缓慢推近
         blur = int(asset_cfg.get("background_blur", 24))
         bg_filters = [
             f"scale={width}:{height}:force_original_aspect_ratio=increase",
             f"crop={width}:{height}",
             f"boxblur={blur}:2",
         ]
-        if bg_motion.get("type") == "kenburns":
-            zf, zt = float(bg_motion.get("from", 1.0)), float(bg_motion.get("to", 1.08))
-            bg_filters.append(
-                f"zoompan=z='{zf}+({zt}-{zf})*on/{frames}'"
-                f":x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)'"
-                f":d={frames}:s={width}x{height}:fps={fps}"
-            )
-        parts = [
-            "[1:v]" + ",".join(bg_filters) + "[bg];",
-            f"[0:v]scale={width}:{height}:force_original_aspect_ratio=decrease[fg];",
-            "[bg][fg]overlay=(W-w)/2:(H-h)/2,format=yuv420p[v]",
-        ]
-        filter_complex = "".join(parts)
-        cmd = [
-            ffmpeg(), "-y",
-            "-loop", "1", "-framerate", str(fps), "-i", src,
-            "-loop", "1", "-framerate", str(fps), "-i", src,
-            "-filter_complex", filter_complex,
-            "-map", "[v]", "-frames:v", str(frames),
-        ]
-    else:
-        # cover：满屏 + Ken Burns 推近
-        zf = float(motion.get("from", 1.0))
-        zt = float(motion.get("to", 1.06))
+        if motion:
+            m = asset_cfg.get("background_motion", {})
+            if m.get("type") == "kenburns" and frames:
+                zf, zt = float(m.get("from", 1.0)), float(m.get("to", 1.08))
+                bg_filters.append(
+                    _kenburns_filter(zf, zt, frames, fps).format(width=width, height=height)
+                )
+        fg_filters = [f"scale={width}:{height}:force_original_aspect_ratio=decrease"]
+        return (
+            f"{in_label}{','.join(bg_filters)}[bg];"
+            f"{in_label}{','.join(fg_filters)}[fg];"
+            f"[bg][fg]overlay=(W-w)/2:(H-h)/2,format=yuv420p{out_label}"
+        )
+
+    # cover：满屏 + （可选）Ken Burns 推近
+    if motion:
+        m = asset_cfg.get("motion", {})
+        zf = float(m.get("from", 1.0))
+        zt = float(m.get("to", 1.06))
         zp = _kenburns_filter(zf, zt, frames, fps).format(width=width, height=height)
-        filter_complex = f"[0:v]{zp},format=yuv420p[v]"
-        cmd = [
-            ffmpeg(), "-y",
-            "-loop", "1", "-framerate", str(fps), "-i", src,
-            "-filter_complex", filter_complex,
-            "-map", "[v]", "-frames:v", str(frames),
-        ]
+        return f"{in_label}{zp},format=yuv420p{out_label}"
+    return (
+        f"{in_label}scale={width}:{height}:force_original_aspect_ratio=increase,"
+        f"crop={width}:{height},format=yuv420p{out_label}"
+    )
+
+
+def render_clip(
+    asset_cfg: dict,
+    group: Group,
+    profile: Profile,
+    out_path: Path,
+    prev_asset_cfg: dict | None = None,
+    transition: dict | None = None,
+) -> Path:
+    """渲染一个组的视频片段：静态图 + 动效（+ 可选 incoming 转场）→ 定长无声视频。
+
+    转场（transition 非空且 prev 存在）以「片段开头 T 秒 xfade(上一张, 当前张)」
+    烘焙进本片段：本片段时长仍为 group.dur，**音频时间轴零改动**，concat 仍走 -c copy。
+    首段无 prev → 天然硬切（满足「首硬切」）；其余段默认都做 incoming 过渡。
+    """
+    width, height, fps = profile.width, profile.height, profile.fps
+    frames = max(1, round(group.dur * fps))
+    src = str(profile.resolve(asset_cfg["file"]))
+
+    inputs = ["-loop", "1", "-framerate", str(fps), "-i", src]
+    # 当前张：完整时长 group.dur 的画布流（含 Ken Burns）
+    cur_parts = _render_to_canvas(asset_cfg, profile, fps, "[0:v]", "[cur]", frames=frames, motion=True)
+
+    if transition and prev_asset_cfg is not None:
+        # 转场时长裁剪到不超过本组时长（xfade 要求 <= 两路输入时长）
+        T = max(0.1, min(float(transition["duration"]), group.dur - 0.05))
+        prev_src = str(profile.resolve(prev_asset_cfg["file"]))
+        inputs += ["-loop", "1", "-framerate", str(fps), "-t", f"{T:.3f}", "-i", prev_src]
+        # 上一张：仅转场期间短暂出现，取静态帧即可
+        prev_parts = _render_to_canvas(prev_asset_cfg, profile, fps, "[1:v]", "[prev]", motion=False)
+        tname = transition["type"]
+        filter_complex = (
+            cur_parts + ";"
+            + prev_parts + ";"
+            f"[prev][cur]xfade=transition={tname}:duration={T:.3f}:offset=0,format=yuv420p[v]"
+        )
+        map_label = "[v]"
+    else:
+        # 无转场：当前张直接出
+        filter_complex = cur_parts
+        map_label = "[cur]"
 
     o = profile.output
-    cmd += [
+    cmd = [
+        ffmpeg(), "-y",
+        *inputs,
+        "-filter_complex", filter_complex,
+        "-map", map_label, "-frames:v", str(frames),
         "-c:v", o["video_codec"], "-preset", o["preset"],
         "-crf", str(min(int(o["crf"]), 16)),  # 中间片用更高质量，字幕阶段还要再编码一次
         "-pix_fmt", "yuv420p",

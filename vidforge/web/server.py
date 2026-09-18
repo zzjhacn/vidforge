@@ -24,6 +24,7 @@ from urllib.parse import unquote, urlparse
 
 from ..pipeline import BuildError, build
 from ..tts import REGISTRY, TTSError, default_scheme, get_scheme, list_schemes, synthesize
+from ..util import list_xfade_transitions
 
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -194,6 +195,23 @@ def _build_yaml(cfg: dict[str, Any], assets: list[str], markers: list[str]) -> s
         "timeline:",
         "  min_group_duration: 5.5",
         "",
+    ]
+    # 转场（Web 仅做全局；type=random 由渲染期展开为具体转场名；none/off 则省略=硬切）
+    ttype = (cfg.get("transition") or "fade").strip().lower()
+    if ttype not in ("", "none", "off", "false"):
+        # 转场时长：夹在 [0.1, 2.0]，避免吞掉最短组（timeline.min_group_duration=5.5s）
+        try:
+            tdur = float(cfg.get("transition_duration", 0.5) or 0.5)
+        except (TypeError, ValueError):
+            tdur = 0.5
+        tdur = min(max(tdur, 0.1), 2.0)
+        lines += [
+            "transition:",
+            f"  type: {ttype}",
+            f"  duration: {tdur:.2f}",
+            "",
+        ]
+    lines += [
         "script:",
         "  source: assets/script.txt",
         f"  max_sentence_chars: {int(cfg.get('max_sentence_chars', 26))}",
@@ -369,6 +387,8 @@ class Handler(BaseHTTPRequestHandler):
                 # 各 TTS 方案及其音色列表（Web 据此做「先选方案、再选音色」）
                 "schemes": list_schemes(),
                 "canvas": list(CANVAS_PRESETS.keys()),
+                # 本机 ffmpeg 实际支持的 xfade 转场名（供前端下拉动态生成；含 random 由前端追加）
+                "transitions": list_xfade_transitions(),
                 # 当前生效的默认方案（来自配置层 default_scheme）
                 "default_scheme": default_scheme(),
                 # 试听固定句：单一来源在后端，前端只负责展示
