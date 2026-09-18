@@ -9,7 +9,7 @@
 
 from __future__ import annotations
 
-import copy
+import datetime as _dt
 import json
 import re
 import shutil
@@ -76,7 +76,7 @@ def parse_multipart(body: bytes, content_type: str) -> tuple[dict[str, str], lis
             continue
         head = part[:idx].decode("utf-8", "replace")
         content = part[idx + 4:]
-        if content.endswith(b"\r\n"):          # 去掉结尾的分隔换行
+        if content.endswith(b"\r\n"):  # 去掉结尾的分隔换行
             content = content[:-2]
 
         name = filename = None
@@ -316,7 +316,7 @@ def run_task(task_id: str, root: Path) -> None:
     except BuildError as exc:
         _task_update(task_id, status="error", error=f"错误：{exc}",
                      last_message=str(exc))
-    except Exception as exc:                                   # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001
         _task_update(task_id, status="error", error=f"{type(exc).__name__}: {exc}",
                      last_message=f"失败：{exc}")
 
@@ -329,7 +329,7 @@ class Handler(BaseHTTPRequestHandler):
     server_version = "vidforge/0.1"
 
     def log_message(self, fmt: str, *args: Any) -> None:
-        pass    # 静音默认日志，避免刷屏
+        pass  # 静音默认日志，避免刷屏
 
     # ── 工具 ────────────────────────────────────────────────
     def _json(self, data: Any, code: int = 200) -> None:
@@ -378,7 +378,7 @@ class Handler(BaseHTTPRequestHandler):
             shutil.copyfileobj(f, self.wfile)
 
     # ── 路由 ────────────────────────────────────────────────
-    def do_GET(self) -> None:                                  # noqa: N802
+    def do_GET(self) -> None:  # noqa: N802
         path = urlparse(self.path).path
         if path in ("/", "/index.html"):
             self._file(STATIC_DIR / "index.html", "text/html; charset=utf-8")
@@ -443,10 +443,10 @@ class Handler(BaseHTTPRequestHandler):
                 audio_path, duration = results[0]
                 audio = audio_path.read_bytes()
                 suffix = audio_path.suffix.lower()
-        except TTSError as exc:                                # 可预期失败：配置/端点/音色
+        except TTSError as exc:  # 可预期失败：配置/端点/音色
             self._json({"error": str(exc)}, 400)
             return
-        except Exception as exc:                               # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
             self._json({"error": f"{type(exc).__name__}: {exc}"}, 500)
             return
 
@@ -462,7 +462,7 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(audio)
 
-    def do_POST(self) -> None:                                 # noqa: N802
+    def do_POST(self) -> None:  # noqa: N802
         path = urlparse(self.path).path
         if path == "/api/tts-test":
             self._tts_test()
@@ -494,6 +494,7 @@ class Handler(BaseHTTPRequestHandler):
 
         markers = [m.strip() for m in fields.get("markers", "").split(",") if m.strip()]
         task_id = uuid.uuid4().hex[:12]
+        task_id = f'{_dt.datetime.now().strftime("%Y%m%d_%H%M%S")}_{task_id}'
         root = Path(fields.get("workroot") or (Path.cwd() / "web_work")) / task_id
         (root / "configs").mkdir(parents=True, exist_ok=True)
         (root / "assets").mkdir(parents=True, exist_ok=True)
