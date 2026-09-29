@@ -123,16 +123,23 @@ def _task_log(task_id: str, msg: str, percent: float | None) -> None:
 def _make_bind(n_images: int, n_markers: int) -> list[dict[str, str]]:
     """按「N 张图 / M 个锚点」自动生成绑定规则。
 
-    规则：图 i(0..n-2) 绑 before:i，最后一张绑 from:M-1。
-    锚点不足时退化处理，保证不报错。
+    - 只有 1 张图 → `all`
+    - 无锚点且多张图 → 各图 `even:i/N`，引擎按句子数尽量均分
+    - 有锚点 → 图 i（0..n-2）绑 `before:min(i, M-1)`，最后一张绑 `from:M-1`，
+      严格按锚点切分
     """
     if n_images <= 1:
         return [{"asset": "img0", "range": "all"}]
+    if n_markers <= 0:
+        return [
+            {'asset': f'img{i}', 'range': f'even:{i}/{n_images}'}
+            for i in range(n_images)
+        ]
     rules = []
+    last = n_markers - 1
     for i in range(n_images - 1):
-        rules.append({"asset": f"img{i}", "range": f"before:{min(i, max(n_markers - 1, 0))}"})
-    last = max(n_markers - 1, 0)
-    rules.append({"asset": f"img{n_images - 1}", "range": f"from:{last}"})
+        rules.append({'asset': f'img{i}', 'range': f'before:{min(i, last)}'})
+    rules.append({'asset': f'img{n_images - 1}', 'range': f'from:{last}'})
     return rules
 
 

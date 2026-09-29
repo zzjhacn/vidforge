@@ -11,6 +11,7 @@
   after:N    → 第 N 个标记所在句之后的所有句子（不含标记句）
   from:N     → 第 N 个标记（含）之后的所有句子
   all        → 全部句子
+  even:i/n   → 按句子数均分成 n 份后的第 i 份（余数靠前，不依赖标记）
 through 与 after 互补成对，正好实现「标记句归前组、其余归后组」；
 这样即使每次的开场白长短不同（1 句或 2 句），数据部分也能稳定落到第二张卡片。
 """
@@ -121,6 +122,17 @@ def _parse_range(rule: str, marker_indices: list[int], total: int) -> tuple[int,
 
     kind, _, arg = rule.partition(":")
     kind = kind.strip().lower()
+
+    if kind == "even":
+        # 无锚点均分：按句子数切成 n 份，余数靠前（6 句 3 图 → 2/2/2，7 句 → 3/2/2）
+        i_str, _, n_str = arg.partition("/")
+        i, n = int(i_str), int(n_str)
+        if n <= 0 or not (0 <= i < n):
+            raise ValueError(f"非法的均分绑定规则：{rule}")
+        base, rem = divmod(total, n)
+        start = i * base + min(i, rem)
+        return start, start + base + (1 if i < rem else 0)
+
     try:
         idx = int(arg)
     except ValueError:
@@ -145,7 +157,7 @@ def _parse_range(rule: str, marker_indices: list[int], total: int) -> tuple[int,
         if anchor < 0:
             return 0, total
         return anchor, total
-    raise ValueError(f"无法解析的绑定规则：{rule}（支持 all/before/through/after/from:N）")
+    raise ValueError(f"无法解析的绑定规则：{rule}（支持 all/before/through/after/from:N/even:i/n）")
 
 
 def build_groups(
