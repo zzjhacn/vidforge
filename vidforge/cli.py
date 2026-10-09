@@ -22,6 +22,10 @@ def main(argv: list[str] | None = None) -> int:
         "--dry-run", action="store_true",
         help="只打印切句、绑定与时间轴预览，不合成视频",
     )
+    parser.add_argument(
+        "--skip-tts", action="store_true",
+        help="跳过语音合成，直接复用 work/tts/seg_XX.*（换机器续跑已生成语音）",
+    )
     args = parser.parse_args(argv)
 
     config_path = Path(args.config).expanduser().resolve()
@@ -30,7 +34,12 @@ def main(argv: list[str] | None = None) -> int:
         print(msg)
 
     try:
-        build(config_path, dry_run=args.dry_run, progress=progress)
+        build(
+            config_path,
+            dry_run=args.dry_run,
+            skip_tts=args.skip_tts,
+            progress=progress,
+        )
     except BuildError as exc:
         print(f"错误：{exc}", file=sys.stderr)
         return 1

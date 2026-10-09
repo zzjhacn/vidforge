@@ -303,12 +303,14 @@ def _tts_test_cfg(req: dict[str, Any]) -> dict[str, Any]:
 
 def run_task(task_id: str, root: Path) -> None:
     """后台线程：调用 pipeline.build 生成视频。"""
+    skip = TASKS.get(task_id, {}).get("skip_tts", False)
     try:
         _task_update(task_id, status="running", percent=1,
                      last_message="开始生成")
         result = build(
             root / "configs" / "scene.yaml",
             dry_run=False,
+            skip_tts=skip,
             progress=lambda msg, pct: _task_log(task_id, msg, pct),
         )
         _task_update(
@@ -490,7 +492,8 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"error": str(exc)}, 400)
             return
 
-        images = [f for f in files if f["filename"]]
+        images = [f for f in files if f["field"] == "images" and f["filename"]]
+        audio = [f for f in files if f["field"] == "audio" and f["filename"]]
         script_text = fields.get("script", "").strip()
         if not images:
             self._json({"error": "请至少上传一张卡片图"}, 400)
@@ -499,12 +502,26 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"error": "文案不能为空"}, 400)
             return
 
+        skip_tts_val = (fields.get("skip_tts") or "").strip()
+        skip = skip_tts_val not in ("", "0", "false", "off")
+        if skip and not audio:
+            self._json({"error": "已勾选「复用语音」但未上传音频文件"}, 400)
+            return
+
         markers = [m.strip() for m in fields.get("markers", "").split(",") if m.strip()]
         task_id = uuid.uuid4().hex[:12]
         task_id = f'{_dt.datetime.now().strftime("%Y%m%d_%H%M%S")}_{task_id}'
         root = Path(fields.get("workroot") or (Path.cwd() / "web_work")) / task_id
         (root / "configs").mkdir(parents=True, exist_ok=True)
         (root / "assets").mkdir(parents=True, exist_ok=True)
+
+        # 复用语音：按上传顺序落到 work/tts/seg_XX.<ext>（句序 = 句子索引）
+        if skip:
+            tts_dir = root / "work" / "tts"
+            tts_dir.mkdir(parents=True, exist_ok=True)
+            for i, a in enumerate(audio):
+                ext = Path(a["filename"]).suffix.lower() or ".wav"
+                (tts_dir / f"seg_{i:02d}{ext}").write_bytes(a["data"])
 
         # 保存图片（按上传顺序命名，保证与绑定顺序一致）
         names = []
@@ -526,7 +543,7 @@ class Handler(BaseHTTPRequestHandler):
                 "id": task_id, "status": "queued", "percent": 0,
                 "logs": [], "last_message": "已排队", "output": None,
                 "error": None, "created": time.time(), "workdir": str(root),
-                "images": len(names),
+                "images": len(names), "skip_tts": skip,
             }
         threading.Thread(target=run_task, args=(task_id, root), daemon=True).start()
         self._json({"task_id": task_id})

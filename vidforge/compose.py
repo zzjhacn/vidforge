@@ -14,9 +14,16 @@ from .util import ffmpeg, run
 
 
 def _kenburns_filter(zoom_from: float, zoom_to: float, frames: int, fps: int) -> str:
-    """在放大 2 倍的源上做缓慢推近，保证 zoom>1 时画质不打折。"""
+    """在源上按「最大缩放比」预放大，保证 zoom>1 时画质不打折。
+
+    旧实现固定放大 2 倍，使 zoompan 在 4 倍像素上逐帧计算，单片段渲染极慢
+    （实测 0.0164x、约 22 分钟/21.8s 片段），生产环境易超时/OOM。
+    改为只按 max(zoom_from, zoom_to) 预放大：zoom=1.08 时仅放大 1.08 倍，
+    像素量降约 3 倍，且最大缩放处仍无画质损失（crop 窗口正好取满源像素）。
+    """
+    scale_factor = max(float(zoom_from), float(zoom_to))
     return (
-        "scale=iw*2:ih*2,"
+        f"scale=iw*{scale_factor}:ih*{scale_factor},"
         f"zoompan=z='{zoom_from}+({zoom_to}-{zoom_from})*on/{frames}'"
         ":x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)'"
         f":d={frames}:s={{width}}x{{height}}:fps={fps}"
@@ -75,6 +82,64 @@ def _render_to_canvas(
     )
 
 
+def _render_scene_clip(
+    asset_cfg: dict,
+    group: Group,
+    profile: Profile,
+    out_path: Path,
+) -> Path:
+    """渲染 type=scene 资产：背景层 + modules_layer 按矩形区域逐个 alpha 淡入浮现。"""
+    width, height, fps = profile.width, profile.height, profile.fps
+    frames = max(1, round(group.dur * fps))
+    bg_src = str(profile.resolve(asset_cfg["file"]))
+    mods_src = str(profile.resolve(asset_cfg["modules_layer"]))
+
+    reveals = asset_cfg.get("modules", [])
+    if not reveals:
+        raise RuntimeError(f"scene 资产缺少 modules 配置: {asset_cfg.get('name')}")
+
+    inputs = [
+        "-loop", "1", "-framerate", str(fps), "-i", bg_src,
+        "-loop", "1", "-framerate", str(fps), "-i", mods_src,
+    ]
+
+    chain: list[str] = ["[0:v]format=yuv420p[bg]"]
+    prev = "[bg]"
+
+    for i, m in enumerate(reveals):
+        x, y, w, h = int(m["x"]), int(m["y"]), int(m["w"]), int(m["h"])
+        t0 = float(m.get("reveal", 0.0))
+        dur = float(m.get("dur", 0.6))
+        mi = f"m{i}_in"
+        out_label = f"b{i}"
+        chain.append(
+            f"[1:v]crop=w={w}:h={h}:x={x}:y={y},format=rgba,"
+            f"fade=t=in:st={t0:.3f}:d={dur:.3f}:alpha=1[{mi}]"
+        )
+        chain.append(
+            f"{prev}[{mi}]overlay={x}:{y}:enable='gte(t,{t0:.3f})'[{out_label}]"
+        )
+        prev = f"[{out_label}]"
+
+    # 最后一个节点直接输出为 [v]
+    chain[-1] = chain[-1].rsplit("[", 1)[0] + "[v]"
+    filter_complex = ";".join(chain)
+
+    o = profile.output
+    cmd = [
+        ffmpeg(), "-y",
+        *inputs,
+        "-filter_complex", filter_complex,
+        "-map", "[v]", "-frames:v", str(frames),
+        "-c:v", o["video_codec"], "-preset", o["preset"],
+        "-crf", str(min(int(o["crf"]), 16)),
+        "-pix_fmt", "yuv420p",
+        str(out_path),
+    ]
+    run(cmd, desc=f"渲染 scene 片段 [{group.index}] {asset_cfg['name']}")
+    return out_path
+
+
 def render_clip(
     asset_cfg: dict,
     group: Group,
@@ -89,6 +154,9 @@ def render_clip(
     烘焙进本片段：本片段时长仍为 group.dur，**音频时间轴零改动**，concat 仍走 -c copy。
     首段无 prev → 天然硬切（满足「首硬切」）；其余段默认都做 incoming 过渡。
     """
+    if asset_cfg.get("type") == "scene":
+        return _render_scene_clip(asset_cfg, group, profile, out_path)
+
     width, height, fps = profile.width, profile.height, profile.fps
     frames = max(1, round(group.dur * fps))
     src = str(profile.resolve(asset_cfg["file"]))

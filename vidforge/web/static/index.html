@@ -142,6 +142,17 @@
         <p class="hint" data-page-node-id="Aqh1xGbiKYuiBZHhjbDgyF">N 张图需要 N-1 个锚点（多个用逗号分隔）。锚点前的内容归前一张图。</p>
       </div>
 
+      <div class="card" style="margin-top:20px" data-page-node-id="SkipTtsCard">
+        <h2 data-page-node-id="SkipTtsHdr">⑤ 复用已生成语音（可选）</h2>
+        <p class="hint" data-page-node-id="SkipTtsHint">换机器续跑：勾选后上传按句序排列的语音文件（seg_00.wav、seg_01.wav…），将跳过 TTS 直接复用。</p>
+        <div class="row" data-page-node-id="SkipTtsRow1"><label data-page-node-id="SkipTtsLbl1">复用语音</label>
+          <span class="check" data-page-node-id="SkipTtsChk"><input type="checkbox" id="skip_tts" data-page-node-id="SkipTtsInput"> 跳过 TTS，使用上传音频</span>
+        </div>
+        <div class="row" data-page-node-id="SkipTtsRow2"><label data-page-node-id="SkipTtsLbl2">语音文件</label>
+          <input type="file" id="audio" accept="audio/*" multiple data-page-node-id="SkipTtsAudio">
+        </div>
+      </div>
+
       <div class="card" style="margin-top:20px" data-page-node-id="1HUw3pC4MMmG4LRUr8J27s">
         <h2 data-page-node-id="NedKRzq58CFP1AWf0KNVbr">④ 字幕</h2>
         <div class="row" data-page-node-id="AKhL3YKsdhO5ibkHOddNwB"><label data-page-node-id="ks1JCSCWA70mO0Ci3BtYQj">显示字幕</label>
@@ -431,6 +442,13 @@ $('go').onclick = async () => {
   fd.append('subtitle_size', $('sub_size').value);
   fd.append('bottom_margin', $('sub_margin').value);
   fd.append('max_sentence_chars', $('maxchars').value);
+
+  if($('skip_tts').checked){
+    const aud = $('audio').files;
+    if(!aud.length){ alert('已勾选「复用语音」，请上传语音文件'); $('go').disabled=false; return; }
+    for(const f of aud) fd.append('audio', f, f.name);
+    fd.append('skip_tts', '1');
+  }
 
   $('go').disabled = true; $('video').style.display='none'; $('dlbox').style.display='none';
   $('logs').textContent=''; $('status').textContent='提交中…'; $('status').className='status';

@@ -39,6 +39,7 @@ ProgressFn = Callable[[str, float | None], None]
 def build(
     config_path: Path,
     dry_run: bool = False,
+    skip_tts: bool = False,
     progress: ProgressFn | None = None,
 ) -> BuildResult:
     """按场景配置生成视频。
@@ -46,6 +47,7 @@ def build(
     Args:
         config_path: 场景 YAML 路径（须位于 <项目根>/configs/ 下）
         dry_run: 只做切句/合成/时间轴，不渲染成片
+        skip_tts: 跳过语音合成，直接复用 work/tts/seg_XX.*（换机器续跑已生成语音）
         progress: 进度回调，签名 (message: str, percent: float | None)
 
     Raises:
@@ -87,12 +89,21 @@ def build(
     # 日志里看到的就是「真正会出片」的方案与音色
     t = tts.resolve(profile.tts)
     scheme = t.get("scheme") or t.get("provider") or "edge"
-    emit(f"\n语音合成：scheme={scheme} voice={t.get('voice')} …", 10)
-    synthesized = tts.synthesize(
-        list(sentences),
-        t,
-        workdir=workdir / "tts",
-    )
+    if skip_tts:
+        emit(
+            f"\n语音合成：skip_tts，复用 work/tts/seg_XX.*（scheme={scheme}）", 10
+        )
+        try:
+            synthesized = tts.reuse_existing(workdir / "tts", len(sentences))
+        except tts.TTSError as e:
+            raise BuildError(str(e)) from e
+    else:
+        emit(f"\n语音合成：scheme={scheme} voice={t.get('voice')} …", 10)
+        synthesized = tts.synthesize(
+            list(sentences),
+            t,
+            workdir=workdir / "tts",
+        )
     by_index = {i: (p, d) for i, (p, d) in enumerate(synthesized)}
     for g in groups:
         for s in g.sentences:

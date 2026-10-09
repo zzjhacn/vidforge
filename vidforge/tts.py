@@ -639,3 +639,30 @@ def synthesize(
     if not texts:
         return []
     return get_scheme(cfg).synthesize(texts, cfg, workdir)
+
+
+def reuse_existing(workdir: Path, n: int) -> list[tuple[Path, float]]:
+    """skip_tts 模式：直接复用 workdir 下已生成的 seg_XX.*，按句序探测真实时长。
+
+    文件命名与 synthesize 保持一致（seg_{i:02d}.*），句序 = 句子索引。
+    任一句子缺文件或为空即报错，避免时间轴与文案错位。
+
+    适用场景：换机器续跑——把已生成语音包（work/tts/seg_00.wav …）连同
+    configs/、assets/ 一起拷到新机，用 --skip-tts 跳过 TTS 直接复用。
+    """
+    if n <= 0:
+        return []
+    workdir.mkdir(parents=True, exist_ok=True)
+    paths: list[Path] = []
+    for i in range(n):
+        hits = sorted(workdir.glob(f"seg_{i:02d}.*"))
+        if not hits:
+            raise TTSError(
+                f"skip_tts 找不到第 {i} 句音频：{workdir}/seg_{i:02d}.* "
+                f"（请确认已放入按句序命名的语音包）"
+            )
+        p = hits[0]
+        if not p.exists() or p.stat().st_size == 0:
+            raise TTSError(f"skip_tts 音频为空或不存在：{p}")
+        paths.append(p)
+    return _finalize(paths)
